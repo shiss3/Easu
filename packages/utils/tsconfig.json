@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    // 1. 目标代码版本：至少设为 ES2015，推荐 ES2017 或更高
+    "target": "ES2017",
+
+    // 2. 核心库定义：必须包含 "ES2015" 以支持 Promise
+    // "DOM" 用于支持浏览器环境 API（因为你的 axios 是给前端用的）
+    "lib": ["ES2015", "DOM"],
+
+    // 其他常见配置保持默认即可
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

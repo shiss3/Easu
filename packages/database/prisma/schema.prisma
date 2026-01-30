@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// packages/database/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. Hotel 表
+model Hotel {
+  id      Int    @id @default(autoincrement())
+  name    String // 名称
+  address String // 地址
+  city    String // 城市
+
+  latitude  Float? // 经度
+  longitude Float? // 纬度
+
+  coverImage  String // 封面
+  images      String[] // 酒店外观图等
+  description String? // 描述
+
+  tags      String[] // 标签 ['免费停车', '智能客控']
+  priceDesc String? // 价格描述 '特惠一口价'
+
+  status    Int @default(1) // 1: 正常, 0: 下架
+  sortOrder Int @default(0) // 优先级，越小越高
+
+  score       Float @default(5.0)
+  reviewCount Int   @default(0)
+
+  roomTypes RoomType[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([city, status])
+}
+
+// 2. RoomType 表
+model RoomType {
+  id Int @id @default(autoincrement())
+
+  hotelId Int
+  hotel   Hotel @relation(fields: [hotelId], references: [id])
+
+  name        String // 房型名称
+  price       Int // 基础刊例价 (单位：分，建议用整数存储金额)
+  bedInfo     String // 床铺信息
+  images      String[] // 房型相册
+  salesVolume Int      @default(0) // 销量
+  sortOrder   Int      @default(0) // 排序
+
+  inventories RoomInventory[]
+}
+
+// 3. RoomInventory 表 (补全以保证关联关系成立)
+model RoomInventory {
+  id Int @id @default(autoincrement())
+
+  roomTypeId Int
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+
+  date  DateTime // 具体日期
+  price Int? // 当日特殊价格，为空则使用RoomType基础价
+  quota Int      @default(10) // 当日库存
+
+  @@unique([roomTypeId, date]) // 同一种房型在同一天只能有一条库存记录
+}

@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,   // ★ 必须开启这一项
+    "skipLibCheck": true,      // 建议开启，跳过依赖库的类型检查，防止第三方库报错
+    "moduleResolution": "node"
+  }
+}
