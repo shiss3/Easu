@@ -14,7 +14,7 @@ interface InterceptorHooks {
     responseInterceptorCatch?: (error: any) => any;
 }
 
-// 工厂函数：创建请求实例
+// 创建请求实例
 export const createHttpClient = (
     baseUrl: string,
     hooks?: InterceptorHooks,

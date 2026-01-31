@@ -1,8 +1,11 @@
 import { MapPin, ChevronRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button'; // Shadcn Button
+import { useNavigate } from 'react-router-dom';
+
 
 
 const HomePage = () => {
+    const navigate = useNavigate();
     return (
         <div className="relative">
             {/* 1. 顶部 Banner 区域 */}
@@ -73,7 +76,9 @@ const HomePage = () => {
                     </div>
 
                     {/* 查询按钮 */}
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg rounded-lg shadow-blue-200 shadow-xl mt-2">
+                    <Button
+                        onClick={() => navigate('/search?city=上海')}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg rounded-lg shadow-blue-200 shadow-xl mt-2">
                         查询
                     </Button>
                 </div>
