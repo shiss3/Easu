@@ -72,8 +72,17 @@ const SearchResultPage = () => {
 
 // 提取单个卡片组件
 const HotelCard = ({ data }: { data: HotelVo }) => {
+
+    const navigate = useNavigate();
+
+    const handleClick = () => {
+        navigate(`/hotel/${data.id}`);
+    }
+
     return (
-        <div className="flex bg-white rounded-lg overflow-hidden shadow-sm h-36">
+        <div
+            onClick={handleClick}
+            className="flex bg-white rounded-lg overflow-hidden shadow-sm h-36">
             {/* 左侧图片 */}
             <div className="w-1/3 relative">
                 <img

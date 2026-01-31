@@ -1,4 +1,4 @@
-import { httpClient } from '@/lib/http'; // 假设你把 @repo/utils 导出为本地 lib 或者直接引用
+import { httpClient } from '@/lib/http';
 
 export interface HotelSearchParams {
     city?: string;
