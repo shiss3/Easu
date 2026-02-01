@@ -75,3 +75,40 @@ model RoomInventory {
 
   @@unique([roomTypeId, date]) // 同一种房型在同一天只能有一条库存记录
 }
+
+model User {
+  id       Int     @id @default(autoincrement())
+  phone    String  @unique // 核心登录账号
+  password String? // 密码 (加密存储)，验证码登录时可能为空
+  name     String?
+  avatar   String?
+  role     String  @default("USER") // 'USER' | 'ADMIN'
+
+  // 安全字段
+  failedLoginAttempts Int       @default(0) // 连续登录失败次数
+  lockoutUntil        DateTime? // 账号锁定截止时间
+
+  // 关联
+  tokens UserToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// UserToken 模型：支持多端登录与 Refresh Token 管理
+model UserToken {
+  id        Int      @id @default(autoincrement())
+  token     String // 存储 RefreshToken，不建议索引，仅用于比对
+  device    String? // 设备标识，如 "iPhone 14", "PC-Chrome"
+  expiresAt DateTime // 物理过期时间
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // 索引：为了加快 refreshToken 验证速度，可以给 token 加索引，
+  // 但考虑到 token 较长，有些 DB 限制索引长度。
+  // 也可以仅索引 userId，通过 userId + token 查找。
+  @@index([userId])
+}
