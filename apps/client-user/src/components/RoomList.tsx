@@ -2,7 +2,12 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import type {RoomTypeVo} from '@/services/hotel-detail.ts';
 import { Button } from '@/components/ui/button';
 
-const RoomList = ({ rooms }: { rooms: RoomTypeVo[] }) => {
+interface RoomListProps {
+    rooms: RoomTypeVo[];
+    onBook: (room: RoomTypeVo) => void; // 新增：接收一个点击事件，并把当前房型传回去
+}
+
+const RoomList = ({ rooms, onBook }: RoomListProps) => {
     return (
         <div className="bg-white min-h-[500px] rounded-t-xl mt-2">
             {/* 1. 日期选择条 */}
@@ -39,7 +44,7 @@ const RoomList = ({ rooms }: { rooms: RoomTypeVo[] }) => {
             {/* 2. 房型列表 */}
             <div className="p-4 flex flex-col gap-6">
                 {rooms.map(room => (
-                    <RoomItem key={room.id} room={room} />
+                    <RoomItem onBook={onBook} key={room.id} room={room} />
                 ))}
             </div>
         </div>
@@ -47,7 +52,7 @@ const RoomList = ({ rooms }: { rooms: RoomTypeVo[] }) => {
 };
 
 // 单个房型卡片
-const RoomItem = ({ room }: { room: RoomTypeVo }) => {
+const RoomItem = ({ room, onBook }: { room: RoomTypeVo; onBook: (room: RoomTypeVo) => void }) => {
     return (
         <div className="flex gap-3 border-b border-gray-100 pb-6 last:border-0">
             {/* 左侧图 */}
@@ -84,7 +89,9 @@ const RoomItem = ({ room }: { room: RoomTypeVo }) => {
                     </div>
                     {/* 订购按钮 */}
                     <div className="flex flex-col items-end gap-1">
-                        <Button className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold">
+                        <Button
+                            onClick={() => onBook(room)}
+                            className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold">
                             订
                         </Button>
                         <span className="text-[10px] text-orange-500">仅剩3间</span>

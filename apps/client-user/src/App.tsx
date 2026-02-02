@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MobileLayout from './layouts/MobileLayout';
 import HomePage from './page/home/';
 import SearchResultPage from './page/search-result';
-import HotelDetailPage from "@/page/hotel-detail"; // 下面创建
+import HotelDetailPage from "@/page/hotel-detail";
+import LoginPage from "@/page/login";
 
 function App() {
     return (
@@ -13,8 +14,10 @@ function App() {
                     {/* 搜索结果页 */}
                     <Route path="search" element={<SearchResultPage />} />
                     {/*酒店详情页*/}
-                    <Route path="/hotel/:id" element={<HotelDetailPage />} />
                 </Route>
+                    <Route path="/hotel/:id" element={<HotelDetailPage />} />
+                    {/*登陆页*/}
+                    <Route path="/login" element={<LoginPage />} />
             </Routes>
         </BrowserRouter>
     );
