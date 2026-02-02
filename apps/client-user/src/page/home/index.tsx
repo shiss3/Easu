@@ -1,5 +1,5 @@
 import { MapPin, ChevronRight, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button'; // Shadcn Button
+import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 
