@@ -9,36 +9,52 @@ interface UserInfo {
 }
 
 interface UserState {
-    token: string | null;
-    userInfo: UserInfo | null;
+    token: string | null;         // Access Token (仅内存)
+    refreshToken: string | null;  // Refresh Token (持久化)
+    userInfo: UserInfo | null;    // 用户信息 (持久化)
+
     // Actions
-    setLogin: (payload: { token: string; userInfo: UserInfo }) => void;
+    setLogin: (payload: { accessToken: string; refreshToken: string; userInfo: UserInfo }) => void;
+    setAccessToken: (token: string) => void;
     logout: () => void;
 }
 
-// 创建 Store 实例
 export const useUserStore = create<UserState>()(
     persist(
         (set) => ({
             token: null,
+            refreshToken: null,
             userInfo: null,
 
-            setLogin: ({ token, userInfo }) => {
-                set({ token, userInfo });
+            setLogin: ({ accessToken, refreshToken, userInfo }) => {
+                set({
+                    token: accessToken,
+                    refreshToken,
+                    userInfo
+                });
+            },
+
+            setAccessToken: (token) => {
+                set({ token });
             },
 
             logout: () => {
-                set({ token: null, userInfo: null });
-                //以此确保清理彻底，也可以选择仅置空状态
+                set({ token: null, refreshToken: null, userInfo: null });
                 localStorage.removeItem('user-storage');
             },
         }),
         {
-            name: 'user-storage', // localStorage key
+            name: 'user-storage',
             storage: createJSONStorage(() => localStorage),
+            // [关键安全策略]
+            // partialize: 决定哪些字段会被存入 localStorage
+            // 我们只存 refreshToken 和 userInfo，坚决不存 token (Access Token)
+            partialize: (state) => ({
+                refreshToken: state.refreshToken,
+                userInfo: state.userInfo,
+            }),
         }
     )
 );
 
-// 导出非 Hook 的读取方式，供 Axios 拦截器使用
 export const getUserState = () => useUserStore.getState();

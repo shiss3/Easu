@@ -4,10 +4,12 @@ import HomePage from './page/home/';
 import SearchResultPage from './page/search-result';
 import HotelDetailPage from "@/page/hotel-detail";
 import LoginPage from "@/page/login";
+import { Toaster } from 'sonner';
 
 function App() {
     return (
         <BrowserRouter>
+            <Toaster position="top-center" richColors />
             <Routes>
                 <Route path="/" element={<MobileLayout />}>
                     <Route index element={<HomePage />} />
