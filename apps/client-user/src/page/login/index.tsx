@@ -87,7 +87,7 @@ const LoginPage = () => {
         if (!phone || !credential) {
             toast.warning('请填写完整信息');
             return;
-        };
+        }
 
         setLoading(true);
         try {
@@ -100,7 +100,8 @@ const LoginPage = () => {
 
             if (res.code === 200) {
                 setLogin({
-                    token: res.data.accessToken,
+                    accessToken: res.data.accessToken,
+                    refreshToken: res.data.refreshToken,
                     userInfo: res.data.user
                 });
 

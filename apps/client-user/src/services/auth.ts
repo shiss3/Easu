@@ -31,4 +31,13 @@ export const authApi = {
     login: (data: LoginParams) => {
         return httpClient.post<LoginResponse>('/auth/login', data);
     },
+
+    // 刷新 Access Token
+    refreshToken: (refreshToken: string) => {
+        return httpClient.post<{ accessToken: string }>(
+            '/auth/refresh-token',
+            { refreshToken },
+            { headers: { 'x-skip-auth-refresh': '1' } }
+        );
+    },
 };

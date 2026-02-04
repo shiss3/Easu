@@ -5,7 +5,8 @@ import {getHotelDetailApi, type HotelDetailVo, type RoomTypeVo} from '@/services
 import RoomList from '@/components/RoomList';
 import { Button } from '@/components/ui/button';
 import HotelHeader from "@/components/HotelHeader.tsx";
-import {useUserStore} from "@/store/userStore.ts";
+import { useUserStore } from "@/store/userStore.ts";
+import { authApi } from '@/services/auth';
 
 const HotelDetailPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -13,15 +14,33 @@ const HotelDetailPage = () => {
     const [hotel, setHotel] = useState<HotelDetailVo | null>(null);
     const [loading, setLoading] = useState(true);
     const token = useUserStore((state) => state.token);
+    const refreshToken = useUserStore((state) => state.refreshToken);
+    const setAccessToken = useUserStore((state) => state.setAccessToken);
+    const logout = useUserStore((state) => state.logout);
 
-    const handleBooking = (room: RoomTypeVo) => {
+    const handleBooking = async (room: RoomTypeVo) => {
         // 权限检查
-        if (!token) {
+        if (!token && !refreshToken) {
             // 未登录，跳转到登录页，并带上 from 状态
             navigate('/login', {
                 state: { from: location.pathname }
             });
             return;
+        }
+
+        if (!token && refreshToken) {
+            try {
+                const res = await authApi.refreshToken(refreshToken);
+                if (res.code === 200) {
+                    setAccessToken(res.data.accessToken);
+                } else {
+                    throw new Error('refresh failed');
+                }
+            } catch {
+                logout();
+                navigate('/login', { state: { from: location.pathname } });
+                return;
+            }
         }
 
         // 已登录，进入下单流程

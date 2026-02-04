@@ -13,7 +13,7 @@ out
 .env.local
 *.env
 .DS_Store
-
+.cursor
 # Turborepo 缓存
 .turbo
 
