@@ -2,8 +2,6 @@ import { MapPin, ChevronRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
-
-
 const HomePage = () => {
     const navigate = useNavigate();
     return (

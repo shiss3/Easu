@@ -20,9 +20,8 @@ const SearchResultPage = () => {
         setLoading(true);
         try {
             const res = await searchHotelsApi({ city });
-            if (res.code === 200) {
-                setHotelList(res.data);
-            }
+            setHotelList(res.data);
+
         } catch (error) {
             console.error(error);
         } finally {

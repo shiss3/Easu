@@ -98,26 +98,22 @@ const LoginPage = () => {
                 device: 'H5-Mobile'
             });
 
-            if (res.code === 200) {
-                setLogin({
-                    accessToken: res.data.accessToken,
-                    refreshToken: res.data.refreshToken,
-                    userInfo: res.data.user
-                });
+            setLogin({
+                accessToken: res.data.accessToken,
+                refreshToken: res.data.refreshToken,
+                userInfo: res.data.user
+            });
 
-                toast.success('登录成功');
+            toast.success('登录成功');
 
-                // 跳转逻辑
-                const fromState = location.state?.from;
-                const searchParams = new URLSearchParams(location.search);
-                const fromQuery = searchParams.get('from');
+            // 跳转逻辑
+            const fromState = location.state?.from;
+            const searchParams = new URLSearchParams(location.search);
+            const fromQuery = searchParams.get('from');
 
-                navigate(fromState || fromQuery || '/', { replace: true });
-            } else {
-                toast.error(res.message);
-            }
+            navigate(fromState || fromQuery || '/', { replace: true });
+
         } catch (error: any) {
-            console.error(error);
             toast.error(error.message || '登录失败，请重试');
         } finally {
             setLoading(false);

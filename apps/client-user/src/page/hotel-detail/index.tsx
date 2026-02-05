@@ -31,11 +31,8 @@ const HotelDetailPage = () => {
         if (!token && refreshToken) {
             try {
                 const res = await authApi.refreshToken(refreshToken);
-                if (res.code === 200) {
-                    setAccessToken(res.data.accessToken);
-                } else {
-                    throw new Error('refresh failed');
-                }
+                setAccessToken(res.data.accessToken);
+
             } catch {
                 logout();
                 navigate('/login', { state: { from: location.pathname } });
@@ -59,9 +56,8 @@ const HotelDetailPage = () => {
         try {
             setLoading(true);
             const res = await getHotelDetailApi(hotelId);
-            if (res.code === 200) {
-                setHotel(res.data);
-            }
+            setHotel(res.data);
+
         } catch (error) {
             console.error(error);
         } finally {

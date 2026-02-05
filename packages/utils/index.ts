@@ -1,2 +1,2 @@
 export * from './src/request';
-export * from './src/type';
+export * from './src/types';
