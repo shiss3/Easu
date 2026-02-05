@@ -1,0 +1,292 @@
+{
+  "days": [
+    {
+      "name": "元旦",
+      "date": "2026-01-01",
+      "isOffDay": true,
+      "displayLabel": "元旦"
+    },
+    {
+      "name": "元旦",
+      "date": "2026-01-02",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "元旦",
+      "date": "2026-01-03",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "元旦",
+      "date": "2026-01-04",
+      "isOffDay": false,
+      "displayLabel": "班"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-14",
+      "isOffDay": false,
+      "displayLabel": "班/情人节"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-15",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-16",
+      "isOffDay": true,
+      "displayLabel": "除夕"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-17",
+      "isOffDay": true,
+      "displayLabel": "春节"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-18",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-19",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-20",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-21",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-22",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-23",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "春节",
+      "date": "2026-02-28",
+      "isOffDay": false,
+      "displayLabel": "班"
+    },
+    {
+      "name": "元宵节",
+      "date": "2026-03-03",
+      "isOffDay": false,
+      "displayLabel": "元宵"
+    },
+    {
+      "name": "妇女节",
+      "date": "2026-03-08",
+      "isOffDay": false,
+      "displayLabel": "妇女节"
+    },
+    {
+      "name": "清明节",
+      "date": "2026-04-04",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "清明节",
+      "date": "2026-04-05",
+      "isOffDay": true,
+      "displayLabel": "清明"
+    },
+    {
+      "name": "清明节",
+      "date": "2026-04-06",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "劳动节",
+      "date": "2026-05-01",
+      "isOffDay": true,
+      "displayLabel": "劳动节"
+    },
+    {
+      "name": "劳动节",
+      "date": "2026-05-02",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "劳动节",
+      "date": "2026-05-03",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "劳动节",
+      "date": "2026-05-04",
+      "isOffDay": true,
+      "displayLabel": "青年节"
+    },
+    {
+      "name": "劳动节",
+      "date": "2026-05-05",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "劳动节",
+      "date": "2026-05-09",
+      "isOffDay": false,
+      "displayLabel": "班"
+    },
+    {
+      "name": "儿童节",
+      "date": "2026-06-01",
+      "isOffDay": false,
+      "displayLabel": "儿童节"
+    },
+    {
+      "name": "端午节",
+      "date": "2026-06-19",
+      "isOffDay": true,
+      "displayLabel": "端午节"
+    },
+    {
+      "name": "端午节",
+      "date": "2026-06-20",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "端午节",
+      "date": "2026-06-21",
+      "isOffDay": true,
+      "displayLabel": "父亲节"
+    },
+    {
+      "name": "七夕",
+      "date": "2026-08-19",
+      "isOffDay": false,
+      "displayLabel": "七夕"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-09-20",
+      "isOffDay": false,
+      "displayLabel": "班"
+    },
+    {
+      "name": "中秋节",
+      "date": "2026-09-25",
+      "isOffDay": true,
+      "displayLabel": "中秋节"
+    },
+    {
+      "name": "中秋节",
+      "date": "2026-09-26",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "中秋节",
+      "date": "2026-09-27",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-01",
+      "isOffDay": true,
+      "displayLabel": "国庆节"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-02",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-03",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-04",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-05",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-06",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-07",
+      "isOffDay": true,
+      "displayLabel": "休"
+    },
+    {
+      "name": "国庆节",
+      "date": "2026-10-10",
+      "isOffDay": false,
+      "displayLabel": "班"
+    },
+    {
+      "name": "万圣夜",
+      "date": "2026-10-31",
+      "isOffDay": false,
+      "displayLabel": "万圣夜"
+    },
+    {
+      "name": "万圣节",
+      "date": "2026-11-01",
+      "isOffDay": false,
+      "displayLabel": "万圣节"
+    },
+    {
+      "name": "感恩节",
+      "date": "2026-11-26",
+      "isOffDay": false,
+      "displayLabel": "感恩节"
+    },
+    {
+      "name": "平安夜",
+      "date": "2026-12-24",
+      "isOffDay": false,
+      "displayLabel": "平安夜"
+    },
+    {
+      "name": "圣诞节",
+      "date": "2026-12-25",
+      "isOffDay": false,
+      "displayLabel": "圣诞节"
+    }
+  ]
+}

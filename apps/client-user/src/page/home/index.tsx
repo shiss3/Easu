@@ -1,9 +1,22 @@
-import { MapPin, ChevronRight, Search } from 'lucide-react';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Search from 'lucide-react/dist/esm/icons/search';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import dayjs from 'dayjs';
+import Calendar from '@/components/Calendar.tsx';
 
 const HomePage = () => {
     const navigate = useNavigate();
+    const [calendarVisible, setCalendarVisible] = useState(false);
+    const [checkInDate, setCheckInDate] = useState(() => dayjs().startOf('day'));
+    const [checkOutDate, setCheckOutDate] = useState(() => dayjs().startOf('day').add(1, 'day'));
+
+    const today = dayjs().startOf('day');
+    const nights = useMemo(() => checkOutDate.diff(checkInDate, 'day'), [checkInDate, checkOutDate]);
+    const checkInHint = checkInDate.isSame(today, 'day') ? '今天' : '';
+    const checkOutHint = checkOutDate.isSame(today.add(1, 'day'), 'day') ? '明天' : '';
     return (
         <div className="relative">
             {/* 1. 顶部 Banner 区域 */}
@@ -43,22 +56,29 @@ const HomePage = () => {
                     </div>
 
                     {/* 日期选择 */}
-                    <div className="flex justify-between items-center border-b border-gray-100 py-4">
+                    <div
+                        className="flex justify-between items-center border-b border-gray-100 py-4 cursor-pointer"
+                        onClick={() => setCalendarVisible(true)}
+                    >
                         <div className="flex flex-col">
                             <span className="text-sm text-gray-500">入住</span>
                             <div className="flex items-end gap-2">
-                                <span className="text-lg font-bold">1月29日</span>
-                                <span className="text-xs text-gray-500 mb-1">今天</span>
+                                <span className="text-lg font-bold">{checkInDate.format('M月D日')}</span>
+                                {checkInHint ? (
+                                    <span className="text-xs text-gray-500 mb-1">{checkInHint}</span>
+                                ) : null}
                             </div>
                         </div>
                         <div className="bg-gray-100 px-2 py-0.5 rounded-full text-xs text-gray-600">
-                            共1晚
+                            共{nights}晚
                         </div>
                         <div className="flex flex-col text-right">
                             <span className="text-sm text-gray-500">离店</span>
                             <div className="flex items-end justify-end gap-2">
-                                <span className="text-lg font-bold">1月30日</span>
-                                <span className="text-xs text-gray-500 mb-1">明天</span>
+                                <span className="text-lg font-bold">{checkOutDate.format('M月D日')}</span>
+                                {checkOutHint ? (
+                                    <span className="text-xs text-gray-500 mb-1">{checkOutHint}</span>
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -113,6 +133,19 @@ const HomePage = () => {
                     </div>
                 </div>
             </div>
+
+            <Calendar
+                visible={calendarVisible}
+                defaultDate={{
+                    start: checkInDate.toDate(),
+                    end: checkOutDate.toDate(),
+                }}
+                onConfirm={(start, end) => {
+                    setCheckInDate(dayjs(start));
+                    setCheckOutDate(dayjs(end));
+                }}
+                onClose={() => setCalendarVisible(false)}
+            />
         </div>
     );
 };
