@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import Calendar from '@/components/Calendar.tsx';
 import Banner from '@/components/Home/Banner';
 import { getHomeBannersApi, type HomeBannerDto } from '@/services/home';
+import GuestSelector from '@/components/GuestSelector';
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -92,13 +93,8 @@ const HomePage = () => {
                     </div>
 
                     {/* 人数/价格 */}
-                    <div className="flex items-center justify-between py-4 text-lg">
-                        <div>
-                            1间房 1成人 0儿童 <span className="text-gray-300 text-sm ml-2">▼</span>
-                        </div>
-                        <div className="text-gray-300 text-sm">
-                            价格/星级
-                        </div>
+                    <div className="py-4">
+                        <GuestSelector />
                     </div>
 
                     {/* 查询按钮 */}
