@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
 import { authApi } from '@/services/auth';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronLeft } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import { toast } from "sonner";
 
 const COUNTDOWN_KEY = 'sms_countdown_end';
@@ -38,7 +39,7 @@ const LoginPage = () => {
 
     // 倒计时计时器逻辑
     useEffect(() => {
-        let timer: NodeJS.Timeout;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         if (countdown > 0) {
             timer = setTimeout(() => {
                 setCountdown((prev) => {
@@ -51,7 +52,9 @@ const LoginPage = () => {
                 });
             }, 1000);
         }
-        return () => clearTimeout(timer);
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, [countdown]);
 
     // 发送验证码

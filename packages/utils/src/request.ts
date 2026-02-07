@@ -1,5 +1,6 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { ApiResponse } from './types';
+import axios from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
+import type { ApiResponse } from './types';
 
 export const createAxiosInstance = (
     baseUrl: string,

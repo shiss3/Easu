@@ -3,9 +3,10 @@ import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import Search from 'lucide-react/dist/esm/icons/search';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import dayjs from 'dayjs';
 import Calendar from '@/components/Calendar.tsx';
+import GuestSelector from '@/components/GuestSelector';
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -14,7 +15,7 @@ const HomePage = () => {
     const [checkOutDate, setCheckOutDate] = useState(() => dayjs().startOf('day').add(1, 'day'));
 
     const today = dayjs().startOf('day');
-    const nights = useMemo(() => checkOutDate.diff(checkInDate, 'day'), [checkInDate, checkOutDate]);
+    const nights = Math.max(checkOutDate.diff(checkInDate, 'day'), 1);
     const checkInHint = checkInDate.isSame(today, 'day') ? '今天' : '';
     const checkOutHint = checkOutDate.isSame(today.add(1, 'day'), 'day') ? '明天' : '';
     return (
@@ -84,13 +85,8 @@ const HomePage = () => {
                     </div>
 
                     {/* 人数/价格 */}
-                    <div className="flex items-center justify-between py-4 text-lg">
-                        <div>
-                            1间房 1成人 0儿童 <span className="text-gray-300 text-sm ml-2">▼</span>
-                        </div>
-                        <div className="text-gray-300 text-sm">
-                            价格/星级
-                        </div>
+                    <div className="py-4 text-lg">
+                        <GuestSelector />
                     </div>
 
                     {/* 查询按钮 */}

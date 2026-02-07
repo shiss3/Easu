@@ -44,7 +44,8 @@ const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) =
     const [holidays, setHolidays] = useState<HolidayDay[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const today = dayjs().startOf('day');
+    // 保持稳定引用：否则依赖 today 的 useMemo 每次渲染都会重算
+    const today = useMemo(() => dayjs().startOf('day'), []);
 
     useEffect(() => {
         if (!visible) {
@@ -203,7 +204,7 @@ const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) =
 
                                             return (
                                                 <div
-                                                    key={dateStr}
+                                                    key={`${dateStr}-${index}`}
                                                     className={cn(
                                                         'h-[60px] flex items-center justify-center',
                                                         isInRange && 'bg-[#D6EAFE]'
