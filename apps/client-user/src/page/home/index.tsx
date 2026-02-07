@@ -3,16 +3,33 @@ import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import Search from 'lucide-react/dist/esm/icons/search';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import Calendar from '@/components/Calendar.tsx';
-import GuestSelector from '@/components/GuestSelector';
+import Banner from '@/components/Home/Banner';
+import { getHomeBannersApi, type HomeBannerDto } from '@/services/home';
 
 const HomePage = () => {
     const navigate = useNavigate();
     const [calendarVisible, setCalendarVisible] = useState(false);
     const [checkInDate, setCheckInDate] = useState(() => dayjs().startOf('day'));
     const [checkOutDate, setCheckOutDate] = useState(() => dayjs().startOf('day').add(1, 'day'));
+    const [banners, setBanners] = useState<HomeBannerDto[]>([]);
+
+    const city = '上海';
+
+    useEffect(() => {
+        const fetchBanners = async () => {
+            try {
+                const res = await getHomeBannersApi({ city, limit: 4 });
+                setBanners(res.data ?? []);
+            } catch (e) {
+                console.error(e);
+                setBanners([]);
+            }
+        };
+        fetchBanners();
+    }, [city]);
 
     const today = dayjs().startOf('day');
     const nights = Math.max(checkOutDate.diff(checkInDate, 'day'), 1);
@@ -21,17 +38,7 @@ const HomePage = () => {
     return (
         <div className="relative">
             {/* 1. 顶部 Banner 区域 */}
-            <div className="relative h-64 w-full overflow-hidden">
-                <img  alt="Hotel Banner" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent p-4">
-                    {/* 顶部状态栏占位 */}
-                    <div className="h-8"></div>
-                    <h1 className="text-white text-3xl font-bold mt-4">全新酒店开业</h1>
-                    <div className="inline-block bg-black/40 text-gold-200 text-sm px-2 py-1 rounded mt-2 text-yellow-300 border border-yellow-300">
-                        会员限时尊享至高 75折优惠
-                    </div>
-                </div>
-            </div>
+            <Banner items={banners} />
 
             {/* 2. 核心搜索卡片 - 负Margin实现重叠效果 */}
             <div className="relative px-4 -mt-16 z-10">
@@ -47,7 +54,7 @@ const HomePage = () => {
                     {/* 城市与搜索 */}
                     <div className="flex items-center justify-between border-b border-gray-100 py-4">
                         <div className="flex items-center gap-1 text-xl font-bold min-w-[80px]">
-                            上海 <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-black translate-y-0.5 ml-1"></div>
+                            {city} <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-black translate-y-0.5 ml-1"></div>
                         </div>
                         <div className="flex-1 ml-4 text-gray-400 text-sm flex items-center">
                             <Search size={16} className="mr-2"/>
@@ -85,13 +92,18 @@ const HomePage = () => {
                     </div>
 
                     {/* 人数/价格 */}
-                    <div className="py-4 text-lg">
-                        <GuestSelector />
+                    <div className="flex items-center justify-between py-4 text-lg">
+                        <div>
+                            1间房 1成人 0儿童 <span className="text-gray-300 text-sm ml-2">▼</span>
+                        </div>
+                        <div className="text-gray-300 text-sm">
+                            价格/星级
+                        </div>
                     </div>
 
                     {/* 查询按钮 */}
                     <Button
-                        onClick={() => navigate('/search?city=上海')}
+                        onClick={() => navigate(`/search?city=${encodeURIComponent(city)}`)}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg rounded-lg shadow-blue-200 shadow-xl mt-2">
                         查询
                     </Button>

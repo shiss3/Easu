@@ -38,11 +38,49 @@ model Hotel {
   reviewCount Int   @default(0)
 
   roomTypes RoomType[]
+  homeBanners HomeBanner[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([city, status])
+}
+
+// 首页 Banner 广告投放表
+model HomeBanner {
+  id Int @id @default(autoincrement())
+
+  // 投放城市，为空代表“全国通投”
+  targetCity String?
+
+  // 关联酒店
+  hotelId Int
+  hotel   Hotel @relation(fields: [hotelId], references: [id])
+
+  // 营销信息
+  title            String?
+  subTitle         String?
+  imageUrlOverride String?
+
+  // 1: 上线, 0: 下架
+  status Int @default(1)
+
+  // 排序权重，越小越靠前
+  sortOrder Int @default(0)
+
+  // 投放有效期（为空代表不限制）
+  startAt DateTime?
+  endAt   DateTime?
+
+  // 统计与活动
+  trackCode  String?
+  campaignId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([targetCity, status, sortOrder])
+  @@index([hotelId])
 }
 
 // 2. RoomType 表
