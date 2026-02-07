@@ -121,6 +121,8 @@ async function main() {
 
     // 1. 清理数据
     try {
+        // 注意：HomeBanner 关联 Hotel，必须先删 Banner 再删 Hotel，否则会触发外键限制
+        await prisma.homeBanner.deleteMany();
         await prisma.roomInventory.deleteMany();
         await prisma.roomType.deleteMany();
         await prisma.hotel.deleteMany();
@@ -217,6 +219,103 @@ async function main() {
         }
         console.log(`✅ ${city.name} 15 家酒店生成完毕`);
     }
+
+    // 3. 生成首页 Banner（基于已存在的酒店数据）
+    const now = new Date();
+    const startAt = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 昨天开始投放
+    const endAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 天后结束
+    const campaignId = 'seed-home-banner';
+
+    // 每个城市挑 3 个（按评分/点评排序）
+    const pickTopHotels = async (cityName: string, take: number) => {
+        return prisma.hotel.findMany({
+            where: { city: cityName, status: 1 },
+            orderBy: [{ score: 'desc' }, { reviewCount: 'desc' }],
+            take,
+            select: { id: true, name: true, coverImage: true, score: true, reviewCount: true },
+        });
+    };
+
+    const [shanghaiTop, chengduTop, beijingTop] = await Promise.all([
+        pickTopHotels('上海', 3),
+        pickTopHotels('成都', 3),
+        pickTopHotels('北京', 3),
+    ]);
+
+    const usedHotelIds = new Set<number>([
+        ...shanghaiTop.map((h) => h.id),
+        ...chengduTop.map((h) => h.id),
+        ...beijingTop.map((h) => h.id),
+    ]);
+
+    const nationwideTop = await prisma.hotel.findMany({
+        where: {
+            status: 1,
+            id: { notIn: Array.from(usedHotelIds) },
+        },
+        orderBy: [{ score: 'desc' }, { reviewCount: 'desc' }],
+        take: 2,
+        select: { id: true, name: true, coverImage: true, score: true, reviewCount: true },
+    });
+
+    let sortOrder = 1;
+    const bannerData = [
+        ...shanghaiTop.map((h, idx) => ({
+            targetCity: '上海' as string | null,
+            hotelId: h.id,
+            title: idx === 0 ? '上海精选酒店' : null, // 留空测试 title 兜底（为空则用 hotel.name）
+            subTitle: idx === 0 ? '高评分推荐 · 会员专享' : '人气必住 · 限时优惠',
+            imageUrlOverride: null, // 留空测试封面兜底（为空则用 hotel.coverImage）
+            status: 1,
+            sortOrder: sortOrder++,
+            startAt,
+            endAt,
+            trackCode: null,
+            campaignId,
+        })),
+        ...chengduTop.map((h, idx) => ({
+            targetCity: '成都' as string | null,
+            hotelId: h.id,
+            title: idx === 0 ? '成都精选酒店' : null,
+            subTitle: idx === 0 ? '吃住行都方便 · 热门商圈' : '口碑优选 · 立即预订',
+            imageUrlOverride: null,
+            status: 1,
+            sortOrder: sortOrder++,
+            startAt,
+            endAt,
+            trackCode: null,
+            campaignId,
+        })),
+        ...beijingTop.map((h, idx) => ({
+            targetCity: '北京' as string | null,
+            hotelId: h.id,
+            title: idx === 0 ? '北京精选酒店' : null,
+            subTitle: idx === 0 ? '近地铁 · 出行无忧' : '热销爆款 · 评分优选',
+            imageUrlOverride: null,
+            status: 1,
+            sortOrder: sortOrder++,
+            startAt,
+            endAt,
+            trackCode: null,
+            campaignId,
+        })),
+        ...nationwideTop.map((h, idx) => ({
+            targetCity: null as string | null,
+            hotelId: h.id,
+            title: idx === 0 ? '全国通投 · 热门精选' : null,
+            subTitle: idx === 0 ? '全站爆款 · 限时特惠' : '高评分口碑 · 即刻出发',
+            imageUrlOverride: null,
+            status: 1,
+            sortOrder: sortOrder++,
+            startAt,
+            endAt,
+            trackCode: null,
+            campaignId,
+        })),
+    ];
+
+    await prisma.homeBanner.createMany({ data: bannerData });
+    console.log('🏷️  HomeBanner 已生成：上海 3、成都 3、北京 3、全国通投 2');
 
     console.log('\n🎉 所有数据填充完成！');
 }
