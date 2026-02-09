@@ -1,5 +1,6 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { ApiResponse } from './type';
+import axios from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
+import type { ApiResponse } from './types';
 
 export const createAxiosInstance = (
     baseUrl: string,
@@ -19,14 +20,12 @@ export const createAxiosInstance = (
             const resData = response.data as ApiResponse;
 
             if (resData.code !== 200) {
-                console.error(`[API Error] ${resData.message}`);
                 throw new Error(resData.message || '系统异常');
             }
 
             return resData as any;
         },
         (error) => {
-            console.error('[Network Error]', error);
             return Promise.reject(error);
         }
     );

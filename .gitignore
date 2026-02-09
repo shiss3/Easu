@@ -14,6 +14,7 @@ out
 *.env
 .DS_Store
 .cursor
+.agents
 # Turborepo 缓存
 .turbo
 

@@ -1,4 +1,5 @@
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import type {RoomTypeVo} from '@/services/hotel-detail.ts';
 import { Button } from '@/components/ui/button';
 

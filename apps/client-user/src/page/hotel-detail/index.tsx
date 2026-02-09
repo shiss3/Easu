@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Share2, Heart, MoreHorizontal } from 'lucide-react';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import Share2 from 'lucide-react/dist/esm/icons/share-2';
+import Heart from 'lucide-react/dist/esm/icons/heart';
+import MoreHorizontal from 'lucide-react/dist/esm/icons/more-horizontal';
 import {getHotelDetailApi, type HotelDetailVo, type RoomTypeVo} from '@/services/hotel-detail';
 import RoomList from '@/components/RoomList';
 import { Button } from '@/components/ui/button';
@@ -31,11 +34,8 @@ const HotelDetailPage = () => {
         if (!token && refreshToken) {
             try {
                 const res = await authApi.refreshToken(refreshToken);
-                if (res.code === 200) {
-                    setAccessToken(res.data.accessToken);
-                } else {
-                    throw new Error('refresh failed');
-                }
+                setAccessToken(res.data.accessToken);
+
             } catch {
                 logout();
                 navigate('/login', { state: { from: location.pathname } });
@@ -59,9 +59,8 @@ const HotelDetailPage = () => {
         try {
             setLoading(true);
             const res = await getHotelDetailApi(hotelId);
-            if (res.code === 200) {
-                setHotel(res.data);
-            }
+            setHotel(res.data);
+
         } catch (error) {
             console.error(error);
         } finally {

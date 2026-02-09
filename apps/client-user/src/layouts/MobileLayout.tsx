@@ -1,4 +1,8 @@
-import { Home, ShoppingCart, Gem, MessageSquareText, User } from 'lucide-react';
+import Home from 'lucide-react/dist/esm/icons/home';
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart';
+import Gem from 'lucide-react/dist/esm/icons/gem';
+import MessageSquareText from 'lucide-react/dist/esm/icons/message-square-text';
+import User from 'lucide-react/dist/esm/icons/user';
 import { Outlet } from 'react-router-dom';
 
 

@@ -1,4 +1,11 @@
-import { MapPin, Star, ChevronRight, Car, UserRound, Coffee, Dumbbell, Bot } from 'lucide-react';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import Star from 'lucide-react/dist/esm/icons/star';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Car from 'lucide-react/dist/esm/icons/car';
+import UserRound from 'lucide-react/dist/esm/icons/user-round';
+import Coffee from 'lucide-react/dist/esm/icons/coffee';
+import Dumbbell from 'lucide-react/dist/esm/icons/dumbbell';
+import Bot from 'lucide-react/dist/esm/icons/bot';
 import type {HotelDetailVo} from '@/services/hotel-detail.ts';
 
 const HotelHeader = ({ hotel }: { hotel: HotelDetailVo }) => {
