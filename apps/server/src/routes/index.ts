@@ -3,6 +3,7 @@ import { searchHotels } from '../controllers/hotel-search.controller';
 import {getHotelDetail} from "../controllers/hotel-detail.controller";
 import { getBanners } from '../controllers/home.controller';
 import { getHolidayList } from '../controllers/calendar.controller';
+import { getRegeoLocation } from '../controllers/location.controller';
 import authRoutes from './auth.routes';
 
 const router = Router();
@@ -18,6 +19,8 @@ router.get('/home/banners', getBanners);
 
 // 日历节假日：GET /calendar/holidays
 router.get('/calendar/holidays', getHolidayList);
+// 定位逆地理：GET /location/regeo
+router.get('/location/regeo', getRegeoLocation);
 //定义路由：POST /auth
 router.use('/auth', authRoutes);
 export default router;

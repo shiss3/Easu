@@ -1,6 +1,7 @@
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import Search from 'lucide-react/dist/esm/icons/search';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -8,7 +9,14 @@ import dayjs from 'dayjs';
 import Calendar from '@/components/Calendar.tsx';
 import Banner from '@/components/Home/Banner';
 import { getHomeBannersApi, type HomeBannerDto } from '@/services/home';
+import { getRegeoLocationApi } from '@/services/location';
 import GuestSelector from '@/components/GuestSelector';
+
+const LOCATION_STORAGE_KEY = 'easu_user_location';
+
+const formatCityName = (value: string) => {
+    return value.replace(/(市|省|自治区|特别行政区)$/g, '').trim();
+};
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -16,8 +24,12 @@ const HomePage = () => {
     const [checkInDate, setCheckInDate] = useState(() => dayjs().startOf('day'));
     const [checkOutDate, setCheckOutDate] = useState(() => dayjs().startOf('day').add(1, 'day'));
     const [banners, setBanners] = useState<HomeBannerDto[]>([]);
+    const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [addressHint, setAddressHint] = useState('');
+    const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-    const city = '上海';
+    const [city, setCity] = useState('上海');
+    const isLocationMode = Boolean(coords) && (locationStatus === 'success' || locationStatus === 'loading');
 
     useEffect(() => {
         const fetchBanners = async () => {
@@ -31,6 +43,87 @@ const HomePage = () => {
         };
         fetchBanners();
     }, [city]);
+
+    useEffect(() => {
+        const saved = localStorage.getItem(LOCATION_STORAGE_KEY);
+        if (!saved) return;
+        try {
+            const parsed = JSON.parse(saved) as {
+                city?: string;
+                addressHint?: string;
+                coords?: { lat: number; lng: number };
+            };
+            if (parsed.coords?.lat && parsed.coords?.lng) {
+                setCoords(parsed.coords);
+                setAddressHint(parsed.addressHint ?? '');
+                setLocationStatus('success');
+                if (parsed.city) {
+                    setCity(parsed.city);
+                }
+            }
+        } catch (error) {
+            console.error('读取定位缓存失败', error);
+        }
+    }, []);
+
+    const handleLocationClick = async () => {
+        if (locationStatus === 'loading') return;
+        if (!navigator.geolocation) {
+            setLocationStatus('error');
+            setAddressHint('无法获取位置，请手动选择');
+            return;
+        }
+
+        setLocationStatus('loading');
+        setAddressHint('正在定位中...');
+
+        try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                });
+            });
+            const nextCoords = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+            };
+            const res = await getRegeoLocationApi(nextCoords);
+            const nextCityRaw = res.data.city || '上海';
+            const nextCity = formatCityName(nextCityRaw) || '上海';
+            const nextHint = res.data.poiName
+                ? `${res.data.poiName}附近`
+                : (res.data.formattedAddress || nextCity);
+
+            setCoords(nextCoords);
+            setCity(nextCity);
+            setAddressHint(nextHint);
+            setLocationStatus('success');
+
+            localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify({
+                city: nextCity,
+                addressHint: nextHint,
+                coords: nextCoords,
+            }));
+        } catch (error) {
+            console.error('定位失败', error);
+            setLocationStatus('error');
+            setAddressHint('无法获取位置，请手动选择');
+            if (!coords) {
+                localStorage.removeItem(LOCATION_STORAGE_KEY);
+            }
+        }
+    };
+
+    const handleSearch = () => {
+        const params = new URLSearchParams();
+        params.set('city', city);
+        if (isLocationMode && coords) {
+            params.set('lat', String(coords.lat));
+            params.set('lng', String(coords.lng));
+        }
+        navigate(`/search?${params.toString()}`);
+    };
 
     const today = dayjs().startOf('day');
     const nights = Math.max(checkOutDate.diff(checkInDate, 'day'), 1);
@@ -47,21 +140,48 @@ const HomePage = () => {
                     {/* Tabs: 国内/海外... */}
                     <div className="flex gap-6 text-lg font-medium mb-4 border-b border-gray-100 pb-2">
                         <span className="text-blue-600 border-b-2 border-blue-600 pb-1">国内</span>
-                        <span className="text-gray-500">海外</span>
+                        {/*<span className="text-gray-500">海外</span>*/}
                         <span className="text-gray-500">钟点房</span>
                         <span className="text-gray-500">民宿</span>
                     </div>
 
+                    {(locationStatus === 'loading' || locationStatus === 'success' || locationStatus === 'error') && (
+                        <div className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm flex items-center gap-2 overflow-hidden flex-nowrap">
+                            {locationStatus === 'loading' ? (
+                                <>
+                                    <Loader2 size={14} className="text-blue-500 animate-spin" />
+                                    <span className="text-blue-600 shrink-0 whitespace-nowrap">
+                                        {addressHint || '正在定位中...'}
+                                    </span>
+                                </>
+                            ) : locationStatus === 'success' ? (
+                                <>
+                                    <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">已定位到 :</span>
+                                    <span className="text-gray-900 block flex-1 truncate">{addressHint}</span>
+                                </>
+                            ) : (
+                                <span className="text-red-500 shrink-0 whitespace-nowrap">无法获取位置，请手动选择</span>
+                            )}
+                        </div>
+                    )}
+
                     {/* 城市与搜索 */}
                     <div className="flex items-center justify-between border-b border-gray-100 py-4">
-                        <div className="flex items-center gap-1 text-xl font-bold min-w-[80px]">
-                            {city} <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-black translate-y-0.5 ml-1"></div>
+                        <div className="flex items-center gap-1 text-xl font-bold w-[6rem]">
+                            {isLocationMode ? '我的位置' : city} <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-black translate-y-0.5 ml-1"></div>
                         </div>
                         <div className="flex-1 ml-4 text-gray-400 text-sm flex items-center">
                             <Search size={16} className="mr-2"/>
                             位置/品牌/酒店
                         </div>
-                        <MapPin className="text-blue-600" size={20} />
+                        <button
+                            type="button"
+                            onClick={handleLocationClick}
+                            className={`text-blue-600 ${locationStatus === 'loading' ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                            aria-label="定位我的位置"
+                        >
+                            <MapPin size={20} />
+                        </button>
                     </div>
 
                     {/* 日期选择 */}
@@ -99,7 +219,7 @@ const HomePage = () => {
 
                     {/* 查询按钮 */}
                     <Button
-                        onClick={() => navigate(`/search?city=${encodeURIComponent(city)}`)}
+                        onClick={handleSearch}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg rounded-lg shadow-blue-200 shadow-xl mt-2">
                         查询
                     </Button>
