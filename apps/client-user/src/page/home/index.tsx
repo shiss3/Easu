@@ -21,6 +21,7 @@ const formatCityName = (value: string) => {
 const HomePage = () => {
     const navigate = useNavigate();
     const [calendarVisible, setCalendarVisible] = useState(false);
+    const [searchType, setSearchType] = useState<'hotel' | 'hourly'>('hotel');
     const [checkInDate, setCheckInDate] = useState(() => dayjs().startOf('day'));
     const [checkOutDate, setCheckOutDate] = useState(() => dayjs().startOf('day').add(1, 'day'));
     const [banners, setBanners] = useState<HomeBannerDto[]>([]);
@@ -29,7 +30,7 @@ const HomePage = () => {
     const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
     const [city, setCity] = useState('上海');
-    const isLocationMode = Boolean(coords) && (locationStatus === 'success' || locationStatus === 'loading');
+    const isLocationMode = Boolean(coords);
 
     useEffect(() => {
         const fetchBanners = async () => {
@@ -107,11 +108,10 @@ const HomePage = () => {
             }));
         } catch (error) {
             console.error('定位失败', error);
+            setCoords(null);
             setLocationStatus('error');
             setAddressHint('无法获取位置，请手动选择');
-            if (!coords) {
-                localStorage.removeItem(LOCATION_STORAGE_KEY);
-            }
+            localStorage.removeItem(LOCATION_STORAGE_KEY);
         }
     };
 
@@ -136,14 +136,41 @@ const HomePage = () => {
 
             {/* 2. 核心搜索卡片 - 负Margin实现重叠效果 */}
             <div className="relative px-4 -mt-16 z-10">
-                <div className="bg-white rounded-xl shadow-lg p-5">
-                    {/* Tabs: 国内/海外... */}
-                    <div className="flex gap-6 text-lg font-medium mb-4 border-b border-gray-100 pb-2">
-                        <span className="text-blue-600 border-b-2 border-blue-600 pb-1">国内</span>
-                        {/*<span className="text-gray-500">海外</span>*/}
-                        <span className="text-gray-500">钟点房</span>
-                        <span className="text-gray-500">民宿</span>
+                <div className="rounded-xl shadow-lg overflow-hidden">
+                    {/* Tabs: 酒店/民宿 & 钟点房 */}
+                    <div className="bg-[#ebf3ff] px-4 pt-3">
+                        <div className="grid grid-cols-2 text-base font-medium">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (checkOutDate.isSame(checkInDate, 'day') || checkOutDate.isBefore(checkInDate, 'day')) {
+                                        setCheckOutDate(checkInDate.add(1, 'day'));
+                                    }
+                                    setSearchType('hotel');
+                                }}
+                                className={`py-2 text-center ${
+                                    searchType === 'hotel'
+                                        ? 'bg-white rounded-t-lg text-slate-900 font-semibold'
+                                        : 'text-slate-500'
+                                }`}
+                            >
+                                酒店/民宿
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSearchType('hourly')}
+                                className={`py-2 text-center ${
+                                    searchType === 'hourly'
+                                        ? 'bg-white rounded-t-lg text-slate-900 font-semibold'
+                                        : 'text-slate-500'
+                                }`}
+                            >
+                                钟点房
+                            </button>
+                        </div>
                     </div>
+
+                    <div className="bg-white px-5 pb-5 pt-4 rounded-b-xl">
 
                     {(locationStatus === 'loading' || locationStatus === 'success' || locationStatus === 'error') && (
                         <div className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm flex items-center gap-2 overflow-hidden flex-nowrap">
@@ -167,7 +194,7 @@ const HomePage = () => {
 
                     {/* 城市与搜索 */}
                     <div className="flex items-center justify-between border-b border-gray-100 py-4">
-                        <div className="flex items-center gap-1 text-xl font-bold w-[6rem]">
+                        <div className="flex items-center gap-1 text-xl font-bold min-w-[80px]">
                             {isLocationMode ? '我的位置' : city} <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-black translate-y-0.5 ml-1"></div>
                         </div>
                         <div className="flex-1 ml-4 text-gray-400 text-sm flex items-center">
@@ -189,33 +216,49 @@ const HomePage = () => {
                         className="flex justify-between items-center border-b border-gray-100 py-4 cursor-pointer"
                         onClick={() => setCalendarVisible(true)}
                     >
-                        <div className="flex flex-col">
-                            <span className="text-sm text-gray-500">入住</span>
-                            <div className="flex items-end gap-2">
-                                <span className="text-lg font-bold">{checkInDate.format('M月D日')}</span>
-                                {checkInHint ? (
-                                    <span className="text-xs text-gray-500 mb-1">{checkInHint}</span>
-                                ) : null}
+                        {searchType === 'hourly' ? (
+                            <div className="flex flex-col">
+                                <span className="text-sm text-gray-500">入住</span>
+                                <div className="flex items-end gap-2">
+                                    <span className="text-lg font-bold">{checkInDate.format('M月D日')}</span>
+                                    {checkInHint ? (
+                                        <span className="text-xs text-gray-500 mb-1">{checkInHint}</span>
+                                    ) : null}
+                                </div>
                             </div>
-                        </div>
-                        <div className="bg-gray-100 px-2 py-0.5 rounded-full text-xs text-gray-600">
-                            共{nights}晚
-                        </div>
-                        <div className="flex flex-col text-right">
-                            <span className="text-sm text-gray-500">离店</span>
-                            <div className="flex items-end justify-end gap-2">
-                                <span className="text-lg font-bold">{checkOutDate.format('M月D日')}</span>
-                                {checkOutHint ? (
-                                    <span className="text-xs text-gray-500 mb-1">{checkOutHint}</span>
-                                ) : null}
-                            </div>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-gray-500">入住</span>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-lg font-bold">{checkInDate.format('M月D日')}</span>
+                                        {checkInHint ? (
+                                            <span className="text-xs text-gray-500 mb-1">{checkInHint}</span>
+                                        ) : null}
+                                    </div>
+                                </div>
+                                <div className="bg-gray-100 px-2 py-0.5 rounded-full text-xs text-gray-600">
+                                    共{nights}晚
+                                </div>
+                                <div className="flex flex-col text-right">
+                                    <span className="text-sm text-gray-500">离店</span>
+                                    <div className="flex items-end justify-end gap-2">
+                                        <span className="text-lg font-bold">{checkOutDate.format('M月D日')}</span>
+                                        {checkOutHint ? (
+                                            <span className="text-xs text-gray-500 mb-1">{checkOutHint}</span>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* 人数/价格 */}
-                    <div className="py-4">
-                        <GuestSelector />
-                    </div>
+                    {searchType === 'hotel' ? (
+                        <div className="py-4">
+                            <GuestSelector />
+                        </div>
+                    ) : null}
 
                     {/* 查询按钮 */}
                     <Button
@@ -223,6 +266,7 @@ const HomePage = () => {
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg rounded-lg shadow-blue-200 shadow-xl mt-2">
                         查询
                     </Button>
+                    </div>
                 </div>
             </div>
 
@@ -260,13 +304,26 @@ const HomePage = () => {
 
             <Calendar
                 visible={calendarVisible}
+                mode={searchType === 'hotel' ? 'range' : 'single'}
                 defaultDate={{
                     start: checkInDate.toDate(),
                     end: checkOutDate.toDate(),
                 }}
                 onConfirm={(start, end) => {
-                    setCheckInDate(dayjs(start));
-                    setCheckOutDate(dayjs(end));
+                    const nextCheckIn = dayjs(start);
+                    setCheckInDate(nextCheckIn);
+                    if (searchType === 'hotel' && end) {
+                        setCheckOutDate(dayjs(end));
+                        return;
+                    }
+                    if (searchType === 'hourly') {
+                        setCheckOutDate((prev) => {
+                            if (prev.isSame(nextCheckIn, 'day') || prev.isBefore(nextCheckIn, 'day')) {
+                                return nextCheckIn.add(1, 'day');
+                            }
+                            return prev;
+                        });
+                    }
                 }}
                 onClose={() => setCalendarVisible(false)}
             />

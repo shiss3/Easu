@@ -11,7 +11,8 @@ interface CalendarProps {
         start: Date;
         end: Date;
     };
-    onConfirm: (start: Date, end: Date) => void;
+    mode?: 'range' | 'single';
+    onConfirm: (start: Date, end: Date | null) => void;
     onClose: () => void;
 }
 
@@ -38,7 +39,7 @@ const buildMonthCells = (month: Dayjs): MonthCell[] => {
     return cells;
 };
 
-const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) => {
+const Calendar = ({ visible, defaultDate, mode = 'range', onConfirm, onClose }: CalendarProps) => {
     const [selectStart, setSelectStart] = useState<Dayjs | null>(null);
     const [selectEnd, setSelectEnd] = useState<Dayjs | null>(null);
     const [holidays, setHolidays] = useState<HolidayDay[]>([]);
@@ -52,8 +53,8 @@ const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) =
             return;
         }
         setSelectStart(dayjs(defaultDate.start).startOf('day'));
-        setSelectEnd(dayjs(defaultDate.end).startOf('day'));
-    }, [visible, defaultDate.start, defaultDate.end]);
+        setSelectEnd(mode === 'range' ? dayjs(defaultDate.end).startOf('day') : null);
+    }, [visible, defaultDate.start, defaultDate.end, mode]);
 
     useEffect(() => {
         if (!visible || !selectStart) {
@@ -111,10 +112,16 @@ const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) =
     }, [today]);
 
     const nights = selectStart && selectEnd ? selectEnd.diff(selectStart, 'day') : 0;
-    const canConfirm = Boolean(selectStart && selectEnd);
+    const canConfirm = mode === 'single' ? Boolean(selectStart) : Boolean(selectStart && selectEnd);
 
     const handleDateClick = (date: Dayjs) => {
         if (date.isBefore(today, 'day')) {
+            return;
+        }
+
+        if (mode === 'single') {
+            setSelectStart(date);
+            setSelectEnd(null);
             return;
         }
 
@@ -194,7 +201,7 @@ const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) =
                                             const isDisabled = date.isBefore(today, 'day');
                                             const isStart = selectStart?.isSame(date, 'day');
                                             const isEnd = selectEnd?.isSame(date, 'day');
-                                            const isInRange = selectStart && selectEnd
+                                            const isInRange = mode === 'range' && selectStart && selectEnd
                                                 ? date.isAfter(selectStart, 'day') && date.isBefore(selectEnd, 'day')
                                                 : false;
                                             const tag = isStart ? '入住' : isEnd ? '离店' : '';
@@ -270,6 +277,11 @@ const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) =
                         type="button"
                         disabled={!canConfirm}
                         onClick={() => {
+                            if (mode === 'single' && selectStart) {
+                                onConfirm(selectStart.toDate(), null);
+                                onClose();
+                                return;
+                            }
                             if (selectStart && selectEnd) {
                                 onConfirm(selectStart.toDate(), selectEnd.toDate());
                                 onClose();
@@ -282,7 +294,7 @@ const Calendar = ({ visible, defaultDate, onConfirm, onClose }: CalendarProps) =
                                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                         )}
                     >
-                        {canConfirm ? `完成（${nights}晚）` : '完成'}
+                        {canConfirm && mode === 'range' ? `完成（${nights}晚）` : '完成'}
                     </button>
                 </div>
             </div>
