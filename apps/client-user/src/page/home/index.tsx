@@ -274,7 +274,12 @@ const HomePage = () => {
             <div className="px-4 mt-6">
                 <div className="grid grid-cols-3 gap-3 mb-6">
                     <MarketingCard title="口碑榜" sub="城市精选" icon="🏆" />
-                    <MarketingCard title="AI智选" sub="问问小宿" icon="🏷️" />
+                    <MarketingCard 
+                        title="AI智选" 
+                        sub="问问小宿" 
+                        icon="🏷️" 
+                        onClick={() => navigate('/ai-assistant')}
+                    />
                     <MarketingCard title="超值低价" sub="7折起" icon="📉" />
                 </div>
 
@@ -332,8 +337,11 @@ const HomePage = () => {
 };
 
 // 辅助小组件
-const MarketingCard = ({ title, sub, icon }: any) => (
-    <div className="bg-white p-3 rounded-lg shadow-sm flex flex-col items-center justify-center text-center">
+const MarketingCard = ({ title, sub, icon, onClick }: any) => (
+    <div 
+        className="bg-white p-3 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 transition-transform"
+        onClick={onClick}
+    >
         <div className="text-2xl mb-1">{icon}</div>
         <div className="font-bold text-gray-800 text-sm">{title}</div>
         <div className="text-xs text-gray-500">{sub}</div>
