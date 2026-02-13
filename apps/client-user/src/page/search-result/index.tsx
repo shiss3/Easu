@@ -122,7 +122,6 @@ const HotelCard = ({ data }: { data: HotelVo }) => {
                         ))}
                     </div>
                 </div>
-
                 {/* 价格区域 */}
                 <div className="flex justify-end items-end gap-1">
                     <span className="text-xs text-red-500 font-medium">特惠一口价</span>

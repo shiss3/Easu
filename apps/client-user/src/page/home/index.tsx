@@ -274,7 +274,7 @@ const HomePage = () => {
             <div className="px-4 mt-6">
                 <div className="grid grid-cols-3 gap-3 mb-6">
                     <MarketingCard title="口碑榜" sub="城市精选" icon="🏆" />
-                    <MarketingCard title="特价套餐" sub="随时退" icon="🏷️" />
+                    <MarketingCard title="AI智选" sub="问问小宿" icon="🏷️" />
                     <MarketingCard title="超值低价" sub="7折起" icon="📉" />
                 </div>
 
