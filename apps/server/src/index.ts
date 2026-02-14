@@ -7,12 +7,26 @@ import routes from './routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const SSE_PATHS = ['/api/chat'];
+const helmetMiddleware = helmet();
+
+const isSsePath = (path: string) => SSE_PATHS.includes(path);
 
 // 中间件
 app.use(cors()); // 允许前端跨域
-app.use(helmet());
+app.use((req, res, next) => {
+    if (isSsePath(req.path)) {
+        return next();
+    }
+
+    helmetMiddleware(req, res, next);
+});
 app.use(express.json());
 app.use((req, _res, next) => {
+    if (isSsePath(req.path)) {
+        return next();
+    }
+
     const sanitize = (value: any): any => {
         if (typeof value === 'string') return xss(value);
         if (Array.isArray(value)) return value.map(sanitize);
