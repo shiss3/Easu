@@ -1,5 +1,6 @@
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import Banner from '@/components/Home/Banner';
 import { getHomeBannersApi, type HomeBannerDto } from '@/services/home';
 import { getRegeoLocationApi } from '@/services/location';
 import GuestSelector from '@/components/GuestSelector';
+import CitySelector, { type CitySelectResult } from '@/components/Home/CitySelector';
 
 const LOCATION_STORAGE_KEY = 'easu_user_location';
 
@@ -21,6 +23,7 @@ const formatCityName = (value: string) => {
 const HomePage = () => {
     const navigate = useNavigate();
     const [calendarVisible, setCalendarVisible] = useState(false);
+    const [citySelectorVisible, setCitySelectorVisible] = useState(false);
     const [searchType, setSearchType] = useState<'hotel' | 'hourly'>('hotel');
     const [checkInDate, setCheckInDate] = useState(() => dayjs().startOf('day'));
     const [checkOutDate, setCheckOutDate] = useState(() => dayjs().startOf('day').add(1, 'day'));
@@ -194,12 +197,17 @@ const HomePage = () => {
 
                     {/* 城市与搜索 */}
                     <div className="flex items-center justify-between border-b border-gray-100 py-4">
-                        <div className="flex items-center gap-1 text-xl font-bold min-w-[80px]">
-                            {isLocationMode ? '我的位置' : city} <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-black translate-y-0.5 ml-1"></div>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setCitySelectorVisible(true)}
+                            className="flex items-center gap-1 text-xl font-bold min-w-[80px] cursor-pointer"
+                        >
+                            {isLocationMode ? '我的位置' : city}
+                            <ChevronDown size={18} className="text-gray-600 ml-0.5" />
+                        </button>
                         <div className="flex-1 ml-4 text-gray-400 text-sm flex items-center">
                             <Search size={16} className="mr-2"/>
-                            位置/品牌/酒店
+                            问问AI助手~小宿
                         </div>
                         <button
                             type="button"
@@ -331,6 +339,24 @@ const HomePage = () => {
                     }
                 }}
                 onClose={() => setCalendarVisible(false)}
+            />
+
+            <CitySelector
+                visible={citySelectorVisible}
+                onClose={() => setCitySelectorVisible(false)}
+                onSelect={(result: CitySelectResult) => {
+                    setCity(result.city);
+                    if (result.location) {
+                        setCoords({ lat: result.location.lat, lng: result.location.lng });
+                        setAddressHint(`${result.location.name}附近`);
+                        setLocationStatus('success');
+                    } else {
+                        setCoords(null);
+                        setAddressHint('');
+                        setLocationStatus('idle');
+                    }
+                    setCitySelectorVisible(false);
+                }}
             />
         </div>
     );

@@ -4,6 +4,7 @@ import {getHotelDetail} from "../controllers/hotel-detail.controller";
 import { getBanners } from '../controllers/home.controller';
 import { getHolidayList } from '../controllers/calendar.controller';
 import { getRegeoLocation } from '../controllers/location.controller';
+import { getCities } from '../controllers/city.controller';
 import { postChat } from '../controllers/chat.controller';
 import authRoutes from './auth.routes';
 
@@ -22,6 +23,8 @@ router.get('/home/banners', getBanners);
 router.get('/calendar/holidays', getHolidayList);
 // 定位逆地理：GET /location/regeo
 router.get('/location/regeo', getRegeoLocation);
+// 城市列表：GET /cities
+router.get('/cities', getCities);
 // AI 聊天：POST /chat
 router.post('/chat', postChat);
 //定义路由：POST /auth
