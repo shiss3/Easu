@@ -13,6 +13,7 @@ import { getHomeBannersApi, type HomeBannerDto } from '@/services/home';
 import { getRegeoLocationApi } from '@/services/location';
 import GuestSelector from '@/components/GuestSelector';
 import CitySelector, { type CitySelectResult } from '@/components/Home/CitySelector';
+import PriceStarSelector from '@/components/Home/PriceStarSelector';
 
 const LOCATION_STORAGE_KEY = 'easu_user_location';
 
@@ -33,6 +34,7 @@ const HomePage = () => {
     const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
     const [city, setCity] = useState('上海');
+    const [showPriceSelector, setShowPriceSelector] = useState(false);
     const isLocationMode = Boolean(coords);
 
     useEffect(() => {
@@ -207,7 +209,7 @@ const HomePage = () => {
                         </button>
                         <div className="flex-1 ml-4 text-gray-400 text-sm flex items-center">
                             <Search size={16} className="mr-2"/>
-                            问问AI助手~小宿
+                            找酒店？问问小宿AI~
                         </div>
                         <button
                             type="button"
@@ -264,7 +266,7 @@ const HomePage = () => {
                     {/* 人数/价格 */}
                     {searchType === 'hotel' ? (
                         <div className="py-4">
-                            <GuestSelector />
+                            <GuestSelector onPriceStarClick={() => setShowPriceSelector(true)} />
                         </div>
                     ) : null}
 
@@ -356,6 +358,15 @@ const HomePage = () => {
                         setLocationStatus('idle');
                     }
                     setCitySelectorVisible(false);
+                }}
+            />
+
+            <PriceStarSelector
+                visible={showPriceSelector}
+                onClose={() => setShowPriceSelector(false)}
+                onConfirm={(minPrice, maxPrice, stars) => {
+                    console.log('价格/星级筛选:', { minPrice, maxPrice, stars });
+                    setShowPriceSelector(false);
                 }}
             />
         </div>

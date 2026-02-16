@@ -224,8 +224,8 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                     type="text"
                                     value={keyword}
                                     onChange={(e) => setKeyword(e.target.value)}
-                                    placeholder="城市/区域/品牌/酒店"
-                                    className="w-full bg-transparent text-lg outline-none placeholder:text-gray-400 pr-6"
+                                    placeholder="城市/区域/景点/品牌/酒店"
+                                    className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400 pr-6"
                                 />
                                 {keyword && (
                                     <button
@@ -287,7 +287,7 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                         {/* ---- Section A: 当前定位 ---- */}
                         <div className="pt-1 pb-3">
                             <div className="flex items-center gap-1.5 mb-2">
-                                <MapPin size={14} className="text-blue-600" />
+                                {/*<MapPin size={14} className="text-blue-600" />*/}
                                 <span className="text-sm font-medium text-gray-700">当前定位</span>
                             </div>
                             {locationLoading ? (
@@ -380,7 +380,7 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                 {/* ---- Section C: 国内热门城市 ---- */}
                                 {!isSearching && (
                                     <div id="city-section-hot" className="py-3 border-t border-gray-100">
-                                        <div className="text-base font-medium text-gray-800 mb-3">国内热门城市</div>
+                                        <div className="text-sm font-medium text-gray-700 mb-3">热门城市</div>
                                         <div className="grid grid-cols-4 gap-2">
                                             {hotCities.map((city) => (
                                                 <button
