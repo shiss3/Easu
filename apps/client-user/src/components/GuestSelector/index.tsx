@@ -1,16 +1,16 @@
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils.ts"
 
-import { AgeSelectorModal } from "./AgeSelectorModal"
-import { SelectionModal } from "./SelectionModal"
+import { AgeSelectorModal } from "./AgeSelectorModal.tsx"
+import { SelectionModal } from "./SelectionModal.tsx"
 import {
   DEFAULT_GUEST_SELECTION,
   GUEST_SELECTION_STORAGE_KEY,
   normalizeGuestSelection,
   type ChildAge,
   type GuestSelection,
-} from "./types"
+} from "./types.ts"
 
 export type GuestSelectorProps = {
   className?: string

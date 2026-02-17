@@ -2,6 +2,7 @@ import * as React from 'react'
 import { createPortal } from 'react-dom'
 import X from 'lucide-react/dist/esm/icons/x'
 import { cn } from '@/lib/utils'
+import { useSearchStore } from '@/store/searchStore'
 
 /* ------------------------------------------------------------------ */
 /*  Types & Constants                                                  */
@@ -10,7 +11,7 @@ import { cn } from '@/lib/utils'
 type PriceStarSelectorProps = {
   visible: boolean
   onClose: () => void
-  onConfirm: (minPrice: string, maxPrice: string, stars: string[]) => void
+  onConfirm?: (minPrice: string, maxPrice: string, stars: string[]) => void
 }
 
 type PriceRange = {
@@ -76,20 +77,27 @@ function findMatchingRange(minPrice: string, maxPrice: string): number {
 export default function PriceStarSelector({ visible, onClose, onConfirm }: PriceStarSelectorProps) {
   useLockBodyScroll(visible)
 
+  const filters = useSearchStore((state) => state.filters)
+  const setFilters = useSearchStore((state) => state.setFilters)
+  const resetFilters = useSearchStore((state) => state.resetFilters)
+
   const [minPrice, setMinPrice] = React.useState('')
   const [maxPrice, setMaxPrice] = React.useState('')
   const [activeRangeIndex, setActiveRangeIndex] = React.useState<number>(-1)
   const [selectedStars, setSelectedStars] = React.useState<string[]>([])
 
-  // 每次打开时重置
+  // 每次打开时，用 store 当前值初始化草稿。
   React.useEffect(() => {
     if (visible) {
-      setMinPrice('')
-      setMaxPrice('')
-      setActiveRangeIndex(-1)
-      setSelectedStars([])
+      const nextMin = filters.minPrice == null ? '' : String(filters.minPrice)
+      const nextMax = filters.maxPrice == null ? '' : String(filters.maxPrice)
+      const nextStars = filters.stars ?? []
+      setMinPrice(nextMin)
+      setMaxPrice(nextMax)
+      setActiveRangeIndex(findMatchingRange(nextMin, nextMax))
+      setSelectedStars(nextStars)
     }
-  }, [visible])
+  }, [visible, filters.maxPrice, filters.minPrice, filters.stars])
 
   /* ---- 价格快捷选项点击 ---- */
   const handleRangeClick = (range: PriceRange, index: number) => {
@@ -135,7 +143,16 @@ export default function PriceStarSelector({ visible, onClose, onConfirm }: Price
 
   /* ---- 完成 ---- */
   const handleConfirm = () => {
-    onConfirm(minPrice, maxPrice, selectedStars)
+    if (!minPrice && !maxPrice && selectedStars.length === 0) {
+      resetFilters()
+    } else {
+      setFilters({
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        stars: selectedStars.length ? selectedStars : undefined,
+      })
+    }
+    onConfirm?.(minPrice, maxPrice, selectedStars)
     onClose()
   }
 

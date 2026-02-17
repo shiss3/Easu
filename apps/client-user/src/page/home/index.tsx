@@ -1,137 +1,112 @@
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
-import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import dayjs from 'dayjs';
-import Calendar from '@/components/Calendar.tsx';
 import Banner from '@/components/Home/Banner';
-import { getHomeBannersApi, type HomeBannerDto } from '@/services/home';
-import { getRegeoLocationApi } from '@/services/location';
 import GuestSelector from '@/components/GuestSelector';
-import CitySelector, { type CitySelectResult } from '@/components/Home/CitySelector';
-import PriceStarSelector from '@/components/Home/PriceStarSelector';
+import { useBanners, useGeoLocation } from '@/hooks/useHomeData';
+import { useIsLocationMode, useNights, useSearchStore } from '@/store/searchStore';
 
-const LOCATION_STORAGE_KEY = 'easu_user_location';
+const Calendar = lazy(() => import('@/components/Calendar'));
+const CitySelector = lazy(() => import('@/components/Home/CitySelector'));
+const PriceStarSelector = lazy(() => import('@/components/Home/PriceStarSelector'));
 
-const formatCityName = (value: string) => {
-    return value.replace(/(市|省|自治区|特别行政区)$/g, '').trim();
-};
+const DATE_FORMAT = 'YYYY-MM-DD';
 
 const HomePage = () => {
     const navigate = useNavigate();
     const [calendarVisible, setCalendarVisible] = useState(false);
     const [citySelectorVisible, setCitySelectorVisible] = useState(false);
-    const [searchType, setSearchType] = useState<'hotel' | 'hourly'>('hotel');
-    const [checkInDate, setCheckInDate] = useState(() => dayjs().startOf('day'));
-    const [checkOutDate, setCheckOutDate] = useState(() => dayjs().startOf('day').add(1, 'day'));
-    const [banners, setBanners] = useState<HomeBannerDto[]>([]);
-    const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-    const [addressHint, setAddressHint] = useState('');
-    const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-
-    const [city, setCity] = useState('上海');
     const [showPriceSelector, setShowPriceSelector] = useState(false);
-    const isLocationMode = Boolean(coords);
+    const hydratedRef = useRef(false);
+
+    const city = useSearchStore((state) => state.city);
+    const coords = useSearchStore((state) => state.coords);
+    const dateRange = useSearchStore((state) => state.dateRange);
+    const filters = useSearchStore((state) => state.filters);
+    const searchType = useSearchStore((state) => state.searchType);
+    const setSearchType = useSearchStore((state) => state.setSearchType);
+    const setDateRange = useSearchStore((state) => state.setDateRange);
+    const hydrateFromUrl = useSearchStore((state) => state.hydrateFromUrl);
+    const hydrateFromStorage = useSearchStore((state) => state.hydrateFromStorage);
+    const locatingStatus = useSearchStore((state) => state.locatingStatus);
+    const isLocationMode = useIsLocationMode();
+    const nights = useNights();
+    const { data: banners = [] } = useBanners(city);
+    const { location, status, error, trigger } = useGeoLocation();
+
+    const checkInDate = useMemo(
+        () => dayjs(dateRange.start, DATE_FORMAT, true).startOf('day'),
+        [dateRange.start],
+    );
+    const checkOutDate = useMemo(
+        () => dayjs(dateRange.end, DATE_FORMAT, true).startOf('day'),
+        [dateRange.end],
+    );
 
     useEffect(() => {
-        const fetchBanners = async () => {
-            try {
-                const res = await getHomeBannersApi({ city, limit: 4 });
-                setBanners(res.data ?? []);
-            } catch (e) {
-                console.error(e);
-                setBanners([]);
-            }
-        };
-        fetchBanners();
-    }, [city]);
-
-    useEffect(() => {
-        const saved = localStorage.getItem(LOCATION_STORAGE_KEY);
-        if (!saved) return;
-        try {
-            const parsed = JSON.parse(saved) as {
-                city?: string;
-                addressHint?: string;
-                coords?: { lat: number; lng: number };
-            };
-            if (parsed.coords?.lat && parsed.coords?.lng) {
-                setCoords(parsed.coords);
-                setAddressHint(parsed.addressHint ?? '');
-                setLocationStatus('success');
-                if (parsed.city) {
-                    setCity(parsed.city);
-                }
-            }
-        } catch (error) {
-            console.error('读取定位缓存失败', error);
-        }
-    }, []);
-
-    const handleLocationClick = async () => {
-        if (locationStatus === 'loading') return;
-        if (!navigator.geolocation) {
-            setLocationStatus('error');
-            setAddressHint('无法获取位置，请手动选择');
+        if (hydratedRef.current) {
             return;
         }
+        hydratedRef.current = true;
+        const params = new URLSearchParams(window.location.search);
+        // URL 优先级最高：先读取存储兜底缺失字段，再用 URL 覆盖对应字段。
+        hydrateFromStorage();
+        hydrateFromUrl(params);
+    }, [hydrateFromStorage, hydrateFromUrl]);
 
-        setLocationStatus('loading');
-        setAddressHint('正在定位中...');
-
-        try {
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                });
-            });
-            const nextCoords = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-            };
-            const res = await getRegeoLocationApi(nextCoords);
-            const nextCityRaw = res.data.city || '上海';
-            const nextCity = formatCityName(nextCityRaw) || '上海';
-            const nextHint = res.data.poiName
-                ? `${res.data.poiName}附近`
-                : (res.data.formattedAddress || nextCity);
-
-            setCoords(nextCoords);
-            setCity(nextCity);
-            setAddressHint(nextHint);
-            setLocationStatus('success');
-
-            localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify({
-                city: nextCity,
-                addressHint: nextHint,
-                coords: nextCoords,
-            }));
-        } catch (error) {
-            console.error('定位失败', error);
-            setCoords(null);
-            setLocationStatus('error');
-            setAddressHint('无法获取位置，请手动选择');
-            localStorage.removeItem(LOCATION_STORAGE_KEY);
+    const isLocating = status === 'locating' || status === 'geocoding';
+    const locationStatus = locatingStatus === 'locating' || locatingStatus === 'geocoding' ? status : locatingStatus;
+    const addressHint = useMemo(() => {
+        if (locationStatus === 'locating') {
+            return '正在定位中...';
         }
+        if (locationStatus === 'geocoding') {
+            return '正在解析位置信息...';
+        }
+        if (locationStatus === 'error') {
+            return error?.message || '无法获取位置，请手动选择';
+        }
+        if (locationStatus === 'success') {
+            return location?.addressHint || `${city}附近`;
+        }
+        return '';
+    }, [city, error?.message, location?.addressHint, locationStatus]);
+
+    const handleLocationClick = async () => {
+        if (isLocating) {
+            return;
+        }
+        await trigger();
     };
 
     const handleSearch = () => {
         const params = new URLSearchParams();
         params.set('city', city);
+        params.set('start', dateRange.start);
+        params.set('end', dateRange.end);
+        params.set('searchType', searchType);
         if (isLocationMode && coords) {
             params.set('lat', String(coords.lat));
             params.set('lng', String(coords.lng));
         }
+        if (filters.minPrice != null) {
+            params.set('minPrice', String(filters.minPrice));
+        }
+        if (filters.maxPrice != null) {
+            params.set('maxPrice', String(filters.maxPrice));
+        }
+        if (filters.stars?.length) {
+            params.set('stars', filters.stars.join(','));
+        }
         navigate(`/search?${params.toString()}`);
     };
 
-    const today = dayjs().startOf('day');
-    const nights = Math.max(checkOutDate.diff(checkInDate, 'day'), 1);
+    const today = useMemo(() => dayjs().startOf('day'), []);
     const checkInHint = checkInDate.isSame(today, 'day') ? '今天' : '';
     const checkOutHint = checkOutDate.isSame(today.add(1, 'day'), 'day') ? '明天' : '';
     return (
@@ -149,7 +124,10 @@ const HomePage = () => {
                                 type="button"
                                 onClick={() => {
                                     if (checkOutDate.isSame(checkInDate, 'day') || checkOutDate.isBefore(checkInDate, 'day')) {
-                                        setCheckOutDate(checkInDate.add(1, 'day'));
+                                        setDateRange({
+                                            start: checkInDate.format(DATE_FORMAT) as typeof dateRange.start,
+                                            end: checkInDate.add(1, 'day').format(DATE_FORMAT) as typeof dateRange.end,
+                                        });
                                     }
                                     setSearchType('hotel');
                                 }}
@@ -177,9 +155,12 @@ const HomePage = () => {
 
                     <div className="bg-white px-5 pb-5 pt-4 rounded-b-xl">
 
-                    {(locationStatus === 'loading' || locationStatus === 'success' || locationStatus === 'error') && (
+                    {(locationStatus === 'locating' ||
+                        locationStatus === 'geocoding' ||
+                        locationStatus === 'success' ||
+                        locationStatus === 'error') && (
                         <div className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm flex items-center gap-2 overflow-hidden flex-nowrap">
-                            {locationStatus === 'loading' ? (
+                            {locationStatus === 'locating' || locationStatus === 'geocoding' ? (
                                 <>
                                     <Loader2 size={14} className="text-blue-500 animate-spin" />
                                     <span className="text-blue-600 shrink-0 whitespace-nowrap">
@@ -209,12 +190,12 @@ const HomePage = () => {
                         </button>
                         <div className="flex-1 ml-4 text-gray-400 text-sm flex items-center">
                             <Search size={16} className="mr-2"/>
-                            找酒店？问问小宿AI~
+                            位置/品牌/酒店
                         </div>
                         <button
                             type="button"
                             onClick={handleLocationClick}
-                            className={`text-blue-600 ${locationStatus === 'loading' ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                            className={`text-blue-600 ${isLocating ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                             aria-label="定位我的位置"
                         >
                             <MapPin size={20} />
@@ -251,7 +232,7 @@ const HomePage = () => {
                                     共{nights}晚
                                 </div>
                                 <div className="flex flex-col text-right">
-                                    <span className="text-sm text-gray-500">离店</span>
+                                    <span className="text-sm text-gray-500 text-left">离店</span>
                                     <div className="flex items-end justify-end gap-2">
                                         <span className="text-lg font-bold">{checkOutDate.format('M月D日')}</span>
                                         {checkOutHint ? (
@@ -294,87 +275,73 @@ const HomePage = () => {
                 </div>
 
                 {/* 季节性Banner */}
-                <div className="bg-gradient-to-r from-orange-400 to-red-500 rounded-lg p-4 text-white">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-lg flex items-center gap-2">
-                            🍂 步履秋冬，即刻出发
-                        </h3>
-                        <ChevronRight size={20}/>
-                    </div>
-                    {/* 横向滚动区域 */}
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                        <FeatureChip label="♨️ 暖冬温泉" active />
-                        <FeatureChip label="🏖️ 过冬·避寒" />
-                        <FeatureChip label="❄️ 冰雪狂欢" />
-                    </div>
+                {/*<div className="bg-gradient-to-r from-orange-400 to-red-500 rounded-lg p-4 text-white">*/}
+                {/*    <div className="flex justify-between items-center mb-4">*/}
+                {/*        <h3 className="font-bold text-lg flex items-center gap-2">*/}
+                {/*            🍂 步履秋冬，即刻出发*/}
+                {/*        </h3>*/}
+                {/*        <ChevronRight size={20}/>*/}
+                {/*    </div>*/}
+                {/*    /!* 横向滚动区域 *!/*/}
+                {/*    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">*/}
+                {/*        <FeatureChip label="♨️ 暖冬温泉" active />*/}
+                {/*        <FeatureChip label="🏖️ 过冬·避寒" />*/}
+                {/*        <FeatureChip label="❄️ 冰雪狂欢" />*/}
+                {/*    </div>*/}
 
-                    {/* 推荐酒店卡片容器 (水平滚动) */}
-                    <div className="flex gap-3 mt-4 overflow-x-auto pb-2">
-                        {[1,2,3].map(i => (
-                            <div key={i} className="min-w-[140px] h-[100px] bg-white/20 rounded-lg border border-white/30"></div>
-                        ))}
-                    </div>
-                </div>
+                {/*    /!* 推荐酒店卡片容器 (水平滚动) *!/*/}
+                {/*    <div className="flex gap-3 mt-4 overflow-x-auto pb-2">*/}
+                {/*        {[1,2,3].map(i => (*/}
+                {/*            <div key={i} className="min-w-[140px] h-[100px] bg-white/20 rounded-lg border border-white/30"></div>*/}
+                {/*        ))}*/}
+                {/*    </div>*/}
+                {/*</div>*/}
             </div>
 
-            <Calendar
-                visible={calendarVisible}
-                mode={searchType === 'hotel' ? 'range' : 'single'}
-                defaultDate={{
-                    start: checkInDate.toDate(),
-                    end: checkOutDate.toDate(),
-                }}
-                onConfirm={(start, end) => {
-                    const nextCheckIn = dayjs(start);
-                    setCheckInDate(nextCheckIn);
-                    if (searchType === 'hotel' && end) {
-                        setCheckOutDate(dayjs(end));
-                        return;
-                    }
-                    if (searchType === 'hourly') {
-                        setCheckOutDate((prev) => {
-                            if (prev.isSame(nextCheckIn, 'day') || prev.isBefore(nextCheckIn, 'day')) {
-                                return nextCheckIn.add(1, 'day');
-                            }
-                            return prev;
-                        });
-                    }
-                }}
-                onClose={() => setCalendarVisible(false)}
-            />
+            <Suspense fallback={null}>
+                <Calendar
+                    visible={calendarVisible}
+                    mode={searchType === 'hotel' ? 'range' : 'single'}
+                    selectedRange={dateRange}
+                    onConfirm={(range) => setDateRange(range)}
+                    onClose={() => setCalendarVisible(false)}
+                />
+            </Suspense>
 
-            <CitySelector
-                visible={citySelectorVisible}
-                onClose={() => setCitySelectorVisible(false)}
-                onSelect={(result: CitySelectResult) => {
-                    setCity(result.city);
-                    if (result.location) {
-                        setCoords({ lat: result.location.lat, lng: result.location.lng });
-                        setAddressHint(`${result.location.name}附近`);
-                        setLocationStatus('success');
-                    } else {
-                        setCoords(null);
-                        setAddressHint('');
-                        setLocationStatus('idle');
-                    }
-                    setCitySelectorVisible(false);
-                }}
-            />
+            <Suspense fallback={null}>
+                <CitySelector
+                    visible={citySelectorVisible}
+                    onClose={() => setCitySelectorVisible(false)}
+                    currentLocation={{
+                        status: locationStatus,
+                        city: location?.city || city,
+                        addressHint,
+                        coords,
+                        errorMessage: error?.message,
+                    }}
+                    onRequestLocation={handleLocationClick}
+                />
+            </Suspense>
 
-            <PriceStarSelector
-                visible={showPriceSelector}
-                onClose={() => setShowPriceSelector(false)}
-                onConfirm={(minPrice, maxPrice, stars) => {
-                    console.log('价格/星级筛选:', { minPrice, maxPrice, stars });
-                    setShowPriceSelector(false);
-                }}
-            />
+            <Suspense fallback={null}>
+                <PriceStarSelector
+                    visible={showPriceSelector}
+                    onClose={() => setShowPriceSelector(false)}
+                />
+            </Suspense>
         </div>
     );
 };
 
 // 辅助小组件
-const MarketingCard = ({ title, sub, icon, onClick }: any) => (
+interface MarketingCardProps {
+    title: string;
+    sub: string;
+    icon: ReactNode;
+    onClick?: () => void;
+}
+
+const MarketingCard = ({ title, sub, icon, onClick }: MarketingCardProps) => (
     <div 
         className="bg-white p-3 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 transition-transform"
         onClick={onClick}
@@ -385,10 +352,10 @@ const MarketingCard = ({ title, sub, icon, onClick }: any) => (
     </div>
 );
 
-const FeatureChip = ({ label, active }: any) => (
-    <div className={`whitespace-nowrap px-3 py-1.5 rounded text-sm ${active ? 'bg-white text-orange-600 font-bold' : 'bg-white/20 text-white'}`}>
-        {label}
-    </div>
-);
+// const FeatureChip = ({ label, active }: any) => (
+//     <div className={`whitespace-nowrap px-3 py-1.5 rounded text-sm ${active ? 'bg-white text-orange-600 font-bold' : 'bg-white/20 text-white'}`}>
+//         {label}
+//     </div>
+// );
 
 export default HomePage;

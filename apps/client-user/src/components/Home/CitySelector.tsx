@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import X from 'lucide-react/dist/esm/icons/x';
 import { cn } from '@/lib/utils';
-import { getRegeoLocationApi, type RegeoLocationData } from '@/services/location';
-import { getCitiesApi, type CitiesData } from '@/services/city';
+import { useCityList } from '@/hooks/useHomeData';
+import type { Coords, LocateStatus } from '@/store/searchStore';
+import { useSearchStore } from '@/store/searchStore';
 
-/* ---------- 类型 ---------- */
 export interface CitySelectResult {
     city: string;
     location?: { lat: number; lng: number; name: string };
@@ -17,11 +17,25 @@ export interface CitySelectResult {
 interface CitySelectorProps {
     visible: boolean;
     onClose: () => void;
-    onSelect: (result: CitySelectResult) => void;
+    onSelect?: (result: CitySelectResult) => void;
+    currentLocation?: {
+        status: LocateStatus;
+        city?: string;
+        addressHint?: string;
+        coords?: Coords | null;
+        errorMessage?: string;
+    };
+    onRequestLocation?: () => void | Promise<void>;
 }
 
-/* ---------- LocalStorage Key ---------- */
 const HISTORY_KEY = 'history_city_search';
+const ROW_HEIGHT = 52;
+const HEADER_HEIGHT = 36;
+// TODO: plug VirtualList from shared package. 当前阶段仅保留可插拔接口，不实现虚拟列表。
+
+type CityRow =
+    | { type: 'header'; key: string; label: string; domId?: string }
+    | { type: 'city'; key: string; city: string };
 
 const readHistory = (): string[] => {
     try {
@@ -37,155 +51,162 @@ const writeHistory = (list: string[]) => {
 };
 
 const addHistory = (city: string) => {
-    const list = readHistory().filter((c) => c !== city);
-    list.unshift(city);
-    writeHistory(list);
+    const next = readHistory().filter((item) => item !== city);
+    next.unshift(city);
+    writeHistory(next);
 };
 
-/* ---------- 组件 ---------- */
-const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
-    /* ---- 状态 ---- */
+const useDebouncedValue = (value: string, delay = 220) => {
+    const [debounced, setDebounced] = useState(value);
+    useEffect(() => {
+        const timer = window.setTimeout(() => setDebounced(value), delay);
+        return () => window.clearTimeout(timer);
+    }, [value, delay]);
+    return debounced;
+};
+
+const CityRows = ({
+    rows,
+    onSelectCity,
+}: {
+    rows: CityRow[];
+    onSelectCity: (city: string) => void;
+}) => {
+    return (
+        <div className="pt-2">
+            {rows.map((row) =>
+                row.type === 'header' ? (
+                    <div
+                        key={row.key}
+                        id={row.domId}
+                        className="sticky top-0 bg-white text-base font-medium text-gray-800 py-2 z-[1]"
+                        style={{ height: HEADER_HEIGHT }}
+                    >
+                        {row.label}
+                    </div>
+                ) : (
+                    <button
+                        key={row.key}
+                        type="button"
+                        onClick={() => onSelectCity(row.city)}
+                        className="w-full text-left text-gray-800 font-medium text-[15px] py-3.5 border-b border-gray-100 last:border-b-0 active:bg-gray-50 transition-colors"
+                        style={{ minHeight: ROW_HEIGHT }}
+                    >
+                        {row.city}
+                    </button>
+                ),
+            )}
+        </div>
+    );
+};
+
+const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLocation }: CitySelectorProps) => {
+    const setCity = useSearchStore((state) => state.setCity);
+    const setCoords = useSearchStore((state) => state.setCoords);
+    const { data: citiesData, isLoading: citiesLoading } = useCityList();
+
     const [keyword, setKeyword] = useState('');
+    const debouncedKeyword = useDebouncedValue(keyword);
     const [aiSearch, setAiSearch] = useState(false);
     const [history, setHistory] = useState<string[]>([]);
-    const [locationData, setLocationData] = useState<RegeoLocationData | null>(null);
-    const [locationLoading, setLocationLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    /* ---- 城市数据（从 API 获取） ---- */
-    const [citiesData, setCitiesData] = useState<CitiesData | null>(null);
-    const [citiesLoading, setCitiesLoading] = useState(false);
-
-    /* ---- 动画控制 ---- */
     const [shouldRender, setShouldRender] = useState(false);
     const [animateIn, setAnimateIn] = useState(false);
 
     useEffect(() => {
         if (visible) {
             setShouldRender(true);
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => setAnimateIn(true));
-            });
+            requestAnimationFrame(() => requestAnimationFrame(() => setAnimateIn(true)));
         } else {
             setAnimateIn(false);
-            const timer = setTimeout(() => setShouldRender(false), 300);
-            return () => clearTimeout(timer);
+            const timer = window.setTimeout(() => setShouldRender(false), 300);
+            return () => window.clearTimeout(timer);
         }
     }, [visible]);
 
-    /* ---- 加载历史 ---- */
     useEffect(() => {
         if (visible) {
             setHistory(readHistory());
         }
     }, [visible]);
 
-    /* ---- 加载城市数据 ---- */
-    useEffect(() => {
-        if (!visible || citiesData) return;
+    const hotCities = useMemo(() => citiesData?.hotCities ?? [], [citiesData]);
+    const alphabet = useMemo(() => citiesData?.alphabet ?? [], [citiesData]);
+    const allCityGroups = useMemo(() => citiesData?.allCities ?? {}, [citiesData]);
+    const keywordText = debouncedKeyword.trim();
+    const isSearching = keywordText.length > 0;
 
-        let cancelled = false;
-        setCitiesLoading(true);
+    const filteredGroups = useMemo(() => {
+        if (!keywordText) {
+            return allCityGroups;
+        }
+        return Object.entries(allCityGroups).reduce<Record<string, string[]>>((acc, [letter, cities]) => {
+            const matched = cities.filter((city) => city.includes(keywordText));
+            if (matched.length > 0) {
+                acc[letter] = matched;
+            }
+            return acc;
+        }, {});
+    }, [allCityGroups, keywordText]);
 
-        getCitiesApi()
-            .then((res) => {
-                if (!cancelled) setCitiesData(res.data);
-            })
-            .catch((e) => {
-                console.error('获取城市列表失败', e);
-            })
-            .finally(() => {
-                if (!cancelled) setCitiesLoading(false);
+    const flatRows = useMemo<CityRow[]>(() => {
+        const rows: CityRow[] = [];
+        Object.entries(filteredGroups).forEach(([letter, cities]) => {
+            rows.push({
+                type: 'header',
+                key: `header-${letter}`,
+                label: letter,
+                domId: `city-letter-${letter}`,
             });
+            cities.forEach((city) => {
+                rows.push({
+                    type: 'city',
+                    key: `city-${letter}-${city}`,
+                    city,
+                });
+            });
+        });
+        return rows;
+    }, [filteredGroups]);
 
-        return () => {
-            cancelled = true;
-        };
-    }, [visible, citiesData]);
-
-    /* ---- 获取当前定位 ---- */
-    useEffect(() => {
-        if (!visible || locationData) return;
-        if (!navigator.geolocation) return;
-
-        let cancelled = false;
-        setLocationLoading(true);
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                if (cancelled) return;
-                try {
-                    const res = await getRegeoLocationApi({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                    });
-                    if (!cancelled) {
-                        setLocationData(res.data);
-                    }
-                } catch (e) {
-                    console.error('定位逆地理失败', e);
-                } finally {
-                    if (!cancelled) setLocationLoading(false);
-                }
-            },
-            (err) => {
-                console.error('获取位置失败', err);
-                if (!cancelled) setLocationLoading(false);
-            },
-            { enableHighAccuracy: true, timeout: 10000 },
-        );
-
-        return () => {
-            cancelled = true;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visible]);
-
-    /* ---- 选择城市 ---- */
     const handleSelect = useCallback(
         (city: string, location?: CitySelectResult['location']) => {
-            addHistory(city);
-            onSelect({ city, location });
+            const safeCity = city.trim();
+            if (!safeCity) {
+                return;
+            }
+            addHistory(safeCity);
+            setHistory(readHistory());
+            setCity(safeCity);
+            if (location) {
+                setCoords({ lat: location.lat, lng: location.lng });
+            } else {
+                setCoords(null);
+            }
+            onSelect?.({ city: safeCity, location });
+            onClose();
         },
-        [onSelect],
+        [onClose, onSelect, setCity, setCoords],
     );
 
-    /* ---- 清空历史 ---- */
     const clearHistory = () => {
         writeHistory([]);
         setHistory([]);
     };
 
-    /* ---- 字母索引点击 ---- */
     const scrollToLetter = (letter: string) => {
-        const target = letter === '热门' ? 'city-section-hot' : `city-letter-${letter}`;
-        const el = document.getElementById(target);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        const targetId = letter === '热门' ? 'city-section-hot' : `city-letter-${letter}`;
+        const target = document.getElementById(targetId);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    /* ---- 从 API 拿到的数据 ---- */
-    const hotCities = citiesData?.hotCities ?? [];
-    const alphabet = citiesData?.alphabet ?? [];
-    const allCities = citiesData?.allCities ?? {};
-
-    /* ---- 搜索过滤 ---- */
-    const filteredCities = keyword.trim()
-        ? Object.entries(allCities).reduce<Record<string, string[]>>((acc, [letter, cities]) => {
-              const matched = cities.filter((c) => c.includes(keyword.trim()));
-              if (matched.length) acc[letter] = matched;
-              return acc;
-          }, {})
-        : allCities;
-
-    const isSearching = keyword.trim().length > 0;
-
-    if (!shouldRender) return null;
+    if (!shouldRender) {
+        return null;
+    }
 
     return (
         <div className="fixed inset-0 z-[100]">
-            {/* 遮罩层 */}
             <div
                 className={cn(
                     'absolute inset-0 bg-black/40 transition-opacity duration-300',
@@ -193,24 +214,19 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                 )}
                 onClick={onClose}
             />
-
-            {/* 弹窗本体 */}
             <div
                 className={cn(
                     'absolute inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl bg-white flex flex-col transition-transform duration-300 ease-out',
                     animateIn ? 'translate-y-0' : 'translate-y-full',
                 )}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
             >
-                {/* Handle bar */}
                 <div className="flex justify-center pt-2 pb-3">
                     <div className="w-10 h-1 rounded-full bg-gray-300" />
                 </div>
 
-                {/* ========== 头部: 搜索栏卡片 ========== */}
                 <div className="px-4 pb-2">
                     <div className="bg-white rounded-2xl px-3 py-3 shadow-sm border border-gray-300">
-                        {/* 第一行：返回箭头 + 输入框 */}
                         <div className="flex items-center gap-1">
                             <button
                                 type="button"
@@ -223,11 +239,11 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                 <input
                                     type="text"
                                     value={keyword}
-                                    onChange={(e) => setKeyword(e.target.value)}
+                                    onChange={(event) => setKeyword(event.target.value)}
                                     placeholder="城市/区域/景点/品牌/酒店"
                                     className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400 pr-6"
                                 />
-                                {keyword && (
+                                {keyword ? (
                                     <button
                                         type="button"
                                         onClick={() => setKeyword('')}
@@ -235,21 +251,18 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                     >
                                         <X size={16} />
                                     </button>
-                                )}
+                                ) : null}
                             </div>
                         </div>
 
-                        {/* 第二行：AI 搜索 + 搜索按钮 */}
                         <div className="flex items-center justify-between mt-3">
-                            {/* AI 搜索开关 - 胶囊容器 */}
                             <button
                                 type="button"
-                                onClick={() => setAiSearch(!aiSearch)}
+                                onClick={() => setAiSearch((prev) => !prev)}
                                 className="inline-flex items-center gap-1.5 bg-white rounded-full pl-2.5 pr-1 py-1 border border-gray-200 shadow-sm"
                             >
                                 <Sparkles size={15} className="text-indigo-500" />
                                 <span className="text-sm font-medium text-gray-700">AI搜索</span>
-                                {/* Toggle */}
                                 <div
                                     role="switch"
                                     aria-checked={aiSearch}
@@ -266,13 +279,9 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                     />
                                 </div>
                             </button>
-
-                            {/* 搜索按钮 - 渐变蓝色胶囊 */}
                             <button
                                 type="button"
-                                onClick={() => {
-                                    if (keyword.trim()) handleSelect(keyword.trim());
-                                }}
+                                onClick={() => handleSelect(keywordText)}
                                 className="shrink-0 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-base font-semibold px-7 py-2 rounded-full active:opacity-90 transition-opacity shadow-md shadow-blue-200/50"
                             >
                                 搜索
@@ -281,70 +290,53 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                     </div>
                 </div>
 
-                {/* ========== 内容区域 (可滚动) ========== */}
                 <div ref={scrollRef} className="flex-1 overflow-y-auto relative pr-6">
                     <div className="px-4 pb-24">
-                        {/* ---- Section A: 当前定位 ---- */}
                         <div className="pt-1 pb-3">
                             <div className="flex items-center gap-1.5 mb-2">
-                                {/*<MapPin size={14} className="text-blue-600" />*/}
                                 <span className="text-sm font-medium text-gray-700">当前定位</span>
                             </div>
-                            {locationLoading ? (
+                            {currentLocation?.status === 'locating' || currentLocation?.status === 'geocoding' ? (
                                 <div className="text-xs text-gray-400">正在定位中...</div>
-                            ) : locationData ? (
+                            ) : currentLocation?.status === 'success' && currentLocation.city ? (
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    {/* Tag 1 - 区县 (蓝色填充) */}
-                                    {(locationData.district || locationData.city) && (
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleSelect(
-                                                    (locationData.district || locationData.city || '').replace(
-                                                        /(市|区|县|自治区)$/g,
-                                                        '',
-                                                    ),
-                                                )
-                                            }
-                                            className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-100 active:bg-blue-100 transition-colors"
-                                        >
-                                            <MapPin size={12} />
-                                            {(locationData.district || locationData.city || '').replace(
-                                                /(市|省|自治区|特别行政区)$/g,
-                                                '',
-                                            )}
-                                        </button>
-                                    )}
-                                    {/* Tag 2 - POI 名称 (白底蓝边) */}
-                                    {locationData.poiName && (
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleSelect(
-                                                    (locationData.district || locationData.city || '').replace(
-                                                        /(市|省|自治区|特别行政区)$/g,
-                                                        '',
-                                                    ),
-                                                    {
-                                                        lat: 0,
-                                                        lng: 0,
-                                                        name: locationData.poiName!,
-                                                    },
-                                                )
-                                            }
-                                            className="inline-flex items-center gap-1 bg-white text-blue-600 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-300 active:bg-blue-50 transition-colors"
-                                        >
-                                            {locationData.poiName}
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            handleSelect(currentLocation.city ?? '', currentLocation.coords
+                                                ? {
+                                                      lat: currentLocation.coords.lat,
+                                                      lng: currentLocation.coords.lng,
+                                                      name: currentLocation.addressHint || currentLocation.city || '',
+                                                  }
+                                                : undefined)
+                                        }
+                                        className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-100 active:bg-blue-100 transition-colors"
+                                    >
+                                        <MapPin size={12} />
+                                        {currentLocation.addressHint || currentLocation.city}
+                                    </button>
                                 </div>
+                            ) : currentLocation?.status === 'error' ? (
+                                <button
+                                    type="button"
+                                    onClick={() => void onRequestLocation?.()}
+                                    className="text-xs text-blue-600"
+                                >
+                                    {currentLocation.errorMessage || '定位失败，点击重试'}
+                                </button>
                             ) : (
-                                <div className="text-xs text-gray-400">无法获取定位信息</div>
+                                <button
+                                    type="button"
+                                    onClick={() => void onRequestLocation?.()}
+                                    className="text-xs text-blue-600"
+                                >
+                                    点击获取当前位置
+                                </button>
                             )}
                         </div>
 
-                        {/* ---- Section B: 历史搜索 ---- */}
-                        {history.length > 0 && (
+                        {history.length > 0 ? (
                             <div className="py-3 border-t border-gray-100">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium text-gray-700">历史搜索</span>
@@ -369,7 +361,7 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                     ))}
                                 </div>
                             </div>
-                        )}
+                        ) : null}
 
                         {citiesLoading ? (
                             <div className="flex items-center justify-center py-12 text-gray-400 text-sm">
@@ -377,8 +369,7 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                             </div>
                         ) : (
                             <>
-                                {/* ---- Section C: 国内热门城市 ---- */}
-                                {!isSearching && (
+                                {!isSearching ? (
                                     <div id="city-section-hot" className="py-3 border-t border-gray-100">
                                         <div className="text-sm font-medium text-gray-700 mb-3">热门城市</div>
                                         <div className="grid grid-cols-4 gap-2">
@@ -394,46 +385,20 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                             ))}
                                         </div>
                                     </div>
-                                )}
+                                ) : null}
 
-                                {/* ---- Section D: 字母分组城市列表（一行一个城市） ---- */}
-                                <div className="pt-2">
-                                    {isSearching && Object.keys(filteredCities).length === 0 ? (
-                                        <div className="text-center text-gray-400 text-sm py-8">
-                                            未找到匹配的城市
-                                        </div>
-                                    ) : (
-                                        Object.entries(filteredCities).map(([letter, cities]) => (
-                                            <div key={letter} id={`city-letter-${letter}`}>
-                                                {/* 字母标题 */}
-                                                <div className="sticky top-0 bg-white text-base font-medium text-gray-800 py-2 z-[1]">
-                                                    {letter}
-                                                </div>
-                                                {/* 城市列表：一行一个 */}
-                                                <div>
-                                                    {cities.map((city) => (
-                                                        <button
-                                                            key={city}
-                                                            type="button"
-                                                            onClick={() => handleSelect(city)}
-                                                            className="w-full text-left text-gray-800 font-medium text-[15px] py-3.5 border-b border-gray-100 last:border-b-0 active:bg-gray-50 transition-colors"
-                                                        >
-                                                            {city}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                                {flatRows.length === 0 ? (
+                                    <div className="text-center text-gray-400 text-sm py-8">
+                                        未找到匹配的城市
+                                    </div>
+                                ) : (
+                                    <CityRows rows={flatRows} onSelectCity={handleSelect} />
+                                )}
                             </>
                         )}
                     </div>
-
-                    {/* ---- 右侧索引导航（热门 + A-Z） ---- */}
-                    {!isSearching && (
+                    {!isSearching ? (
                         <div className="fixed right-1 top-1/2 -translate-y-1/2 z-[101] flex flex-col items-center">
-                            {/* 热门 */}
                             <button
                                 type="button"
                                 onClick={() => scrollToLetter('热门')}
@@ -441,7 +406,6 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                             >
                                 热门
                             </button>
-                            {/* A-Z */}
                             {alphabet.map((letter) => (
                                 <button
                                     key={letter}
@@ -453,7 +417,7 @@ const CitySelector = ({ visible, onClose, onSelect }: CitySelectorProps) => {
                                 </button>
                             ))}
                         </div>
-                    )}
+                    ) : null}
                 </div>
             </div>
         </div>
