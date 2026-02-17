@@ -28,10 +28,20 @@ export interface SearchFilters {
 
 export type LocateStatus = 'idle' | 'locating' | 'geocoding' | 'success' | 'error';
 export type SearchType = 'hotel' | 'hourly';
+export interface LocationMetaPayload {
+    locationLabel: string;
+    locationPoiName?: string;
+    locationFormattedAddress?: string;
+    lastLocateAt?: number;
+}
 
 interface SearchState {
     city: string;
     coords: Coords | null;
+    locationLabel: string;
+    locationPoiName?: string;
+    locationFormattedAddress?: string;
+    lastLocateAt?: number;
     dateRange: DateRange;
     filters: SearchFilters;
     searchType: SearchType;
@@ -39,6 +49,8 @@ interface SearchState {
     setCity: (city: string) => void;
     setDateRange: (range: DateRange) => void;
     setCoords: (coords: Coords | null) => void;
+    setLocationMeta: (payload: LocationMetaPayload) => void;
+    clearLocationMeta: () => void;
     setFilters: (next: Partial<SearchFilters>) => void;
     resetFilters: () => void;
     setSearchType: (type: SearchType) => void;
@@ -49,6 +61,7 @@ interface SearchState {
 
 const DEFAULT_CITY = '上海';
 const DEFAULT_SEARCH_TYPE: SearchType = 'hotel';
+const DEFAULT_LOCATION_LABEL = '';
 const DEFAULT_FILTERS: SearchFilters = {
     minPrice: undefined,
     maxPrice: undefined,
@@ -137,13 +150,43 @@ export const useSearchStore = create<SearchState>()(
         (set, get) => ({
             city: DEFAULT_CITY,
             coords: null,
+            locationLabel: DEFAULT_LOCATION_LABEL,
+            locationPoiName: undefined,
+            locationFormattedAddress: undefined,
+            lastLocateAt: undefined,
             dateRange: getDefaultDateRange(),
             filters: { ...DEFAULT_FILTERS },
             searchType: DEFAULT_SEARCH_TYPE,
             locatingStatus: 'idle',
             setCity: (city) => set({ city: city.trim() || DEFAULT_CITY }),
             setDateRange: (range) => set({ dateRange: normalizeDateRange(range) }),
-            setCoords: (coords) => set({ coords }),
+            setCoords: (coords) => {
+                if (coords === null) {
+                    set({
+                        coords: null,
+                        locationLabel: DEFAULT_LOCATION_LABEL,
+                        locationPoiName: undefined,
+                        locationFormattedAddress: undefined,
+                        lastLocateAt: undefined,
+                    });
+                    return;
+                }
+                set({ coords });
+            },
+            setLocationMeta: (payload) =>
+                set({
+                    locationLabel: payload.locationLabel.trim(),
+                    locationPoiName: payload.locationPoiName,
+                    locationFormattedAddress: payload.locationFormattedAddress,
+                    lastLocateAt: payload.lastLocateAt,
+                }),
+            clearLocationMeta: () =>
+                set({
+                    locationLabel: DEFAULT_LOCATION_LABEL,
+                    locationPoiName: undefined,
+                    locationFormattedAddress: undefined,
+                    lastLocateAt: undefined,
+                }),
             setFilters: (next) => {
                 const prev = get().filters;
                 const merged = { ...prev, ...next };
@@ -206,7 +249,20 @@ export const useSearchStore = create<SearchState>()(
 
                 try {
                     const parsed = JSON.parse(raw) as {
-                        state?: Partial<Pick<SearchState, 'city' | 'coords' | 'dateRange' | 'filters' | 'searchType'>>;
+                        state?: Partial<
+                            Pick<
+                                SearchState,
+                                | 'city'
+                                | 'coords'
+                                | 'locationLabel'
+                                | 'locationPoiName'
+                                | 'locationFormattedAddress'
+                                | 'lastLocateAt'
+                                | 'dateRange'
+                                | 'filters'
+                                | 'searchType'
+                            >
+                        >;
                     };
                     const fromStorage = parsed.state;
                     if (!fromStorage) {
@@ -217,6 +273,10 @@ export const useSearchStore = create<SearchState>()(
                     set({
                         city: fromStorage.city?.trim() || DEFAULT_CITY,
                         coords: fromStorage.coords ?? null,
+                        locationLabel: fromStorage.locationLabel ?? DEFAULT_LOCATION_LABEL,
+                        locationPoiName: fromStorage.locationPoiName ?? undefined,
+                        locationFormattedAddress: fromStorage.locationFormattedAddress ?? undefined,
+                        lastLocateAt: fromStorage.lastLocateAt ?? undefined,
                         dateRange: normalizeDateRange(fromStorage.dateRange),
                         filters: sanitizeFilters(fromStorage.filters),
                         searchType:
@@ -228,6 +288,10 @@ export const useSearchStore = create<SearchState>()(
                     set({
                         city: DEFAULT_CITY,
                         coords: null,
+                        locationLabel: DEFAULT_LOCATION_LABEL,
+                        locationPoiName: undefined,
+                        locationFormattedAddress: undefined,
+                        lastLocateAt: undefined,
                         dateRange: getDefaultDateRange(),
                         filters: { ...DEFAULT_FILTERS },
                         searchType: DEFAULT_SEARCH_TYPE,
@@ -241,6 +305,10 @@ export const useSearchStore = create<SearchState>()(
             partialize: (state) => ({
                 city: state.city,
                 coords: state.coords,
+                locationLabel: state.locationLabel,
+                locationPoiName: state.locationPoiName,
+                locationFormattedAddress: state.locationFormattedAddress,
+                lastLocateAt: state.lastLocateAt,
                 dateRange: state.dateRange,
                 filters: state.filters,
                 searchType: state.searchType,
@@ -253,6 +321,16 @@ export const useSearchStore = create<SearchState>()(
                 state.setDateRange(state.dateRange);
                 state.setFilters(state.filters);
                 state.setSearchType(state.searchType === 'hourly' ? 'hourly' : 'hotel');
+                if (state.coords === null) {
+                    state.clearLocationMeta();
+                } else {
+                    state.setLocationMeta({
+                        locationLabel: state.locationLabel ?? DEFAULT_LOCATION_LABEL,
+                        locationPoiName: state.locationPoiName,
+                        locationFormattedAddress: state.locationFormattedAddress,
+                        lastLocateAt: state.lastLocateAt,
+                    });
+                }
             },
         }
     )

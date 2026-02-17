@@ -26,6 +26,7 @@ const HomePage = () => {
 
     const city = useSearchStore((state) => state.city);
     const coords = useSearchStore((state) => state.coords);
+    const locationLabel = useSearchStore((state) => state.locationLabel);
     const dateRange = useSearchStore((state) => state.dateRange);
     const filters = useSearchStore((state) => state.filters);
     const searchType = useSearchStore((state) => state.searchType);
@@ -61,6 +62,12 @@ const HomePage = () => {
 
     const isLocating = status === 'locating' || status === 'geocoding';
     const locationStatus = locatingStatus === 'locating' || locatingStatus === 'geocoding' ? status : locatingStatus;
+    const resolvedLocationHint = (location?.addressHint || locationLabel).trim();
+    const shouldShowLocatedHint =
+        isLocationMode &&
+        Boolean(resolvedLocationHint) &&
+        (locationStatus === 'success' || locationStatus === 'idle');
+
     const addressHint = useMemo(() => {
         if (locationStatus === 'locating') {
             return '正在定位中...';
@@ -71,11 +78,8 @@ const HomePage = () => {
         if (locationStatus === 'error') {
             return error?.message || '无法获取位置，请手动选择';
         }
-        if (locationStatus === 'success') {
-            return location?.addressHint || `${city}附近`;
-        }
-        return '';
-    }, [city, error?.message, location?.addressHint, locationStatus]);
+        return resolvedLocationHint;
+    }, [error?.message, locationStatus, resolvedLocationHint]);
 
     const handleLocationClick = async () => {
         if (isLocating) {
@@ -155,10 +159,7 @@ const HomePage = () => {
 
                     <div className="bg-white px-5 pb-5 pt-4 rounded-b-xl">
 
-                    {(locationStatus === 'locating' ||
-                        locationStatus === 'geocoding' ||
-                        locationStatus === 'success' ||
-                        locationStatus === 'error') && (
+                    {(locationStatus === 'locating' || locationStatus === 'geocoding' || locationStatus === 'error' || shouldShowLocatedHint) && (
                         <div className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-sm flex items-center gap-2 overflow-hidden flex-nowrap">
                             {locationStatus === 'locating' || locationStatus === 'geocoding' ? (
                                 <>
@@ -167,7 +168,7 @@ const HomePage = () => {
                                         {addressHint || '正在定位中...'}
                                     </span>
                                 </>
-                            ) : locationStatus === 'success' ? (
+                            ) : shouldShowLocatedHint ? (
                                 <>
                                     <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">已定位到 :</span>
                                     <span className="text-gray-900 block flex-1 truncate">{addressHint}</span>
@@ -188,10 +189,14 @@ const HomePage = () => {
                             {isLocationMode ? '我的位置' : city}
                             <ChevronDown size={18} className="text-gray-600 ml-0.5" />
                         </button>
-                        <div className="flex-1 ml-4 text-gray-400 text-sm flex items-center">
+                        <button
+                            type="button"
+                            onClick={() => setCitySelectorVisible(true)}
+                            className="flex-1 ml-4 text-gray-400 text-sm flex items-center cursor-pointer"
+                        >
                             <Search size={16} className="mr-2"/>
                             位置/品牌/酒店
-                        </div>
+                        </button>
                         <button
                             type="button"
                             onClick={handleLocationClick}
@@ -315,7 +320,7 @@ const HomePage = () => {
                     currentLocation={{
                         status: locationStatus,
                         city: location?.city || city,
-                        addressHint,
+                        addressHint: resolvedLocationHint,
                         coords,
                         errorMessage: error?.message,
                     }}

@@ -82,6 +82,7 @@ export const useGeoLocation = () => {
     const setLocatingStatus = useSearchStore((state) => state.setLocatingStatus);
     const setCoords = useSearchStore((state) => state.setCoords);
     const setCity = useSearchStore((state) => state.setCity);
+    const setLocationMeta = useSearchStore((state) => state.setLocationMeta);
     const [location, setLocation] = useState<NormalizedLocation | null>(null);
     const [error, setError] = useState<GeoLocationError | null>(null);
 
@@ -111,7 +112,7 @@ export const useGeoLocation = () => {
             setLocatingStatus('geocoding');
             const regeoRes = await getRegeoLocationApi(nextCoords);
             const city = normalizeCityName(regeoRes.data.city || '上海');
-            const addressHint = regeoRes.data.poiName
+            const locationLabel = regeoRes.data.poiName
                 ? `${regeoRes.data.poiName}附近`
                 : (regeoRes.data.formattedAddress || city);
 
@@ -119,24 +120,29 @@ export const useGeoLocation = () => {
                 city,
                 coords: nextCoords,
                 district: regeoRes.data.district,
-                addressHint,
+                addressHint: locationLabel,
                 raw: regeoRes.data,
             };
 
             setCoords(nextCoords);
             setCity(city);
+            setLocationMeta({
+                locationLabel,
+                locationPoiName: regeoRes.data.poiName ?? undefined,
+                locationFormattedAddress: regeoRes.data.formattedAddress ?? undefined,
+                lastLocateAt: Date.now(),
+            });
             setLocation(normalized);
             setLocatingStatus('success');
             return normalized;
         } catch (e) {
             const nextError = toGeoError(e);
 
-            setCoords(null);
             setLocatingStatus('error');
             setError(nextError);
             return null;
         }
-    }, [setCity, setCoords, setLocatingStatus]);
+    }, [setCity, setCoords, setLocatingStatus, setLocationMeta]);
 
     const reset = useCallback(() => {
         setLocation(null);
