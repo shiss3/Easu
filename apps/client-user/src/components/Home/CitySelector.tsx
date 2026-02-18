@@ -159,10 +159,10 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
                 label: letter,
                 domId: `city-letter-${letter}`,
             });
-            cities.forEach((city) => {
+            cities.forEach((city, index) => {
                 rows.push({
                     type: 'city',
-                    key: `city-${letter}-${city}`,
+                    key: `city-${letter}-${city}-${index}`,
                     city,
                 });
             });
