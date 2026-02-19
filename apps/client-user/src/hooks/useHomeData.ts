@@ -134,6 +134,14 @@ export const useGeoLocation = () => {
             });
             setLocation(normalized);
             setLocatingStatus('success');
+
+            try {
+                localStorage.setItem(
+                    'last_gps_location',
+                    JSON.stringify({ city, addressHint: locationLabel, coords: nextCoords }),
+                );
+            } catch { /* ignore */ }
+
             return normalized;
         } catch (e) {
             const nextError = toGeoError(e);

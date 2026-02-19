@@ -178,13 +178,16 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
             }
             addHistory(safeCity);
             setHistory(readHistory());
-            setCity(safeCity);
-            if (location) {
-                setCoords({ lat: location.lat, lng: location.lng });
+            if (onSelect) {
+                onSelect({ city: safeCity, location });
             } else {
-                setCoords(null);
+                setCity(safeCity);
+                if (location) {
+                    setCoords({ lat: location.lat, lng: location.lng });
+                } else {
+                    setCoords(null);
+                }
             }
-            onSelect?.({ city: safeCity, location });
             onClose();
         },
         [onClose, onSelect, setCity, setCoords],
