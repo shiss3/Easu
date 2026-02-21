@@ -12,6 +12,15 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // url      = env("DATABASE_URL") // 从环境变量读取
+}
+
+// 枚举：酒店审核进度
+enum ReviewProcess {
+  PENDING // 审核中
+  PUBLISHED // 已发布（前端可见）
+  REJECTED // 已拒绝
+  DRAFT // 草稿（商户暂存，不提交审核）
 }
 
 // 1. Hotel 表
@@ -37,13 +46,20 @@ model Hotel {
   score       Float @default(5.0)
   reviewCount Int   @default(0)
 
-  roomTypes RoomType[]
+  roomTypes   RoomType[]
   homeBanners HomeBanner[]
+
+  // b端新增字段
+  checking  ReviewProcess @default(PENDING) // 审核进度
+  adminNote String?       @db.VarChar(255) // 管理员填写的审核意见（如不通过原因
+  // 关联商户
+  ownerId   Int? // 为了数据库现存数据，暂时可选不添加（开发ing）
+  owner     Manager?      @relation("MerchantHotels", fields: [ownerId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([city, status])
+  @@index([city, status, checking])
 }
 
 // 首页 Banner 广告投放表
@@ -149,4 +165,44 @@ model UserToken {
   // 但考虑到 token 较长，有些 DB 限制索引长度。
   // 也可以仅索引 userId，通过 userId + token 查找。
   @@index([userId])
+}
+
+// 枚举：b端用户角色
+enum Role {
+  ADMIN // 酒店管理员:审核/发布 酒店信息
+  MERCHANT // 酒店商户:上传/编辑 酒店信息
+}
+
+// b端管理员用户表
+model Manager {
+  id            Int    @id @default(autoincrement())
+  name          String @unique @db.VarChar(50) // 核心登录用户名
+  password      String // 密码 (加密存储)
+  role          Role   @default(MERCHANT) // 'MERCHANT' | 'ADMIN'
+  contact_phone String @db.VarChar(11)
+  email         String
+
+  // 关联
+  tokens ManagerToken[]
+
+  isActive Boolean @default(true) // 账号启用/禁用状态
+
+  hotels Hotel[] @relation("MerchantHotels")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// b端用户token模型
+model ManagerToken {
+  id        Int      @id @default(autoincrement())
+  token     String
+  expiresAt DateTime // 物理过期时间
+
+  managerId Int
+  manager   Manager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([managerId])
 }
