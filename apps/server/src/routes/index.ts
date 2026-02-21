@@ -6,12 +6,16 @@ import { getHolidayList } from '../controllers/calendar.controller';
 import { getRegeoLocation } from '../controllers/location.controller';
 import { getCities } from '../controllers/city.controller';
 import { postChat } from '../controllers/chat.controller';
+import { getSearchSuggestions } from '../controllers/search-suggestions.controller';
 import authRoutes from './auth.routes';
 
 const router = Router();
 
 // 定义路由：POST /hotel/search
 router.post('/hotel/search', searchHotels);
+
+// 联想搜索：GET /search/suggestions
+router.get('/search/suggestions', getSearchSuggestions);
 
 //定义路由：GET /hotel/:id
 router.get('/hotel/:id', getHotelDetail);

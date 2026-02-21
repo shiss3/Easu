@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Building2 from 'lucide-react/dist/esm/icons/building-2';
 import X from 'lucide-react/dist/esm/icons/x';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { cn } from '@/lib/utils';
 import { useCityList } from '@/hooks/useHomeData';
+import { useSearchSuggestions } from '@/hooks/useSearchSuggestions';
+import type { SuggestionItem } from '@/services/hotel-search';
 import type { Coords, LocateStatus } from '@/store/searchStore';
 import { useSearchStore } from '@/store/searchStore';
 
@@ -31,7 +37,6 @@ interface CitySelectorProps {
 const HISTORY_KEY = 'history_city_search';
 const ROW_HEIGHT = 52;
 const HEADER_HEIGHT = 36;
-// TODO: plug VirtualList from shared package. 当前阶段仅保留可插拔接口，不实现虚拟列表。
 
 type CityRow =
     | { type: 'header'; key: string; label: string; domId?: string }
@@ -100,7 +105,145 @@ const CityRows = ({
     );
 };
 
+/* ---------- Suggestion list items ---------- */
+
+const SuggestionCityItem = ({
+    item,
+    keyword,
+    onSelect,
+}: {
+    item: SuggestionItem;
+    keyword: string;
+    onSelect: (city: string) => void;
+}) => {
+    const highlighted = highlightMatch(item.name, keyword);
+    return (
+        <button
+            type="button"
+            onClick={() => onSelect(item.city)}
+            className="flex items-center gap-3 w-full px-1 py-3 border-b border-gray-100 active:bg-gray-50 transition-colors"
+        >
+            <div className="shrink-0 w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
+                <Search size={16} className="text-blue-500" />
+            </div>
+            <span className="text-[15px] text-gray-800 font-medium">{highlighted}</span>
+        </button>
+    );
+};
+
+const SuggestionHotelItem = ({
+    item,
+    keyword,
+    onNavigate,
+}: {
+    item: SuggestionItem;
+    keyword: string;
+    onNavigate: (id: number) => void;
+}) => {
+    const highlighted = highlightMatch(item.name, keyword);
+    const priceYuan = item.minPrice ? Math.round(item.minPrice / 100) : null;
+
+    return (
+        <button
+            type="button"
+            onClick={() => onNavigate(item.id as number)}
+            className="flex items-start gap-3 w-full px-1 py-3 border-b border-gray-100 active:bg-gray-50 transition-colors"
+        >
+            <div className="shrink-0 w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center mt-0.5">
+                <Building2 size={16} className="text-orange-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-[15px] text-gray-800 font-medium truncate">{highlighted}</span>
+                    {priceYuan !== null && priceYuan > 0 && (
+                        <span className="shrink-0 text-sm text-red-500 font-semibold">
+                            ¥{priceYuan}<span className="text-xs font-normal">起</span>
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                    {item.score != null && (
+                        <span className="text-blue-600 font-medium">{item.score}分</span>
+                    )}
+                    {item.address && (
+                        <span className="truncate">{item.address}</span>
+                    )}
+                </div>
+            </div>
+        </button>
+    );
+};
+
+function highlightMatch(text: string, keyword: string) {
+    if (!keyword) return text;
+    const idx = text.toLowerCase().indexOf(keyword.toLowerCase());
+    if (idx === -1) return text;
+    return (
+        <>
+            {text.slice(0, idx)}
+            <span className="text-blue-600">{text.slice(idx, idx + keyword.length)}</span>
+            {text.slice(idx + keyword.length)}
+        </>
+    );
+}
+
+const SuggestionList = ({
+    suggestions,
+    keyword,
+    isLoading,
+    onSelectCity,
+    onNavigateHotel,
+}: {
+    suggestions: SuggestionItem[];
+    keyword: string;
+    isLoading: boolean;
+    onSelectCity: (city: string) => void;
+    onNavigateHotel: (id: number) => void;
+}) => {
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12 text-gray-400 text-sm gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                搜索中...
+            </div>
+        );
+    }
+
+    if (suggestions.length === 0) {
+        return (
+            <div className="text-center text-gray-400 text-sm py-8">
+                未找到相关结果
+            </div>
+        );
+    }
+
+    return (
+        <div className="pt-1">
+            {suggestions.map((item) =>
+                item.type === 'CITY' ? (
+                    <SuggestionCityItem
+                        key={item.id}
+                        item={item}
+                        keyword={keyword}
+                        onSelect={onSelectCity}
+                    />
+                ) : (
+                    <SuggestionHotelItem
+                        key={item.id}
+                        item={item}
+                        keyword={keyword}
+                        onNavigate={onNavigateHotel}
+                    />
+                ),
+            )}
+        </div>
+    );
+};
+
+/* ---------- Main component ---------- */
+
 const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLocation }: CitySelectorProps) => {
+    const navigate = useNavigate();
     const setCity = useSearchStore((state) => state.setCity);
     const setCoords = useSearchStore((state) => state.setCoords);
     const { data: citiesData, isLoading: citiesLoading } = useCityList();
@@ -113,6 +256,11 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
 
     const [shouldRender, setShouldRender] = useState(false);
     const [animateIn, setAnimateIn] = useState(false);
+
+    const keywordText = debouncedKeyword.trim();
+    const isSearching = keywordText.length > 0;
+
+    const { data: suggestions, isLoading: suggestionsLoading } = useSearchSuggestions(debouncedKeyword);
 
     useEffect(() => {
         if (visible) {
@@ -134,25 +282,10 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
     const hotCities = useMemo(() => citiesData?.hotCities ?? [], [citiesData]);
     const alphabet = useMemo(() => citiesData?.alphabet ?? [], [citiesData]);
     const allCityGroups = useMemo(() => citiesData?.allCities ?? {}, [citiesData]);
-    const keywordText = debouncedKeyword.trim();
-    const isSearching = keywordText.length > 0;
-
-    const filteredGroups = useMemo(() => {
-        if (!keywordText) {
-            return allCityGroups;
-        }
-        return Object.entries(allCityGroups).reduce<Record<string, string[]>>((acc, [letter, cities]) => {
-            const matched = cities.filter((city) => city.includes(keywordText));
-            if (matched.length > 0) {
-                acc[letter] = matched;
-            }
-            return acc;
-        }, {});
-    }, [allCityGroups, keywordText]);
 
     const flatRows = useMemo<CityRow[]>(() => {
         const rows: CityRow[] = [];
-        Object.entries(filteredGroups).forEach(([letter, cities]) => {
+        Object.entries(allCityGroups).forEach(([letter, cities]) => {
             rows.push({
                 type: 'header',
                 key: `header-${letter}`,
@@ -168,14 +301,12 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
             });
         });
         return rows;
-    }, [filteredGroups]);
+    }, [allCityGroups]);
 
     const handleSelect = useCallback(
         (city: string, location?: CitySelectResult['location']) => {
             const safeCity = city.trim();
-            if (!safeCity) {
-                return;
-            }
+            if (!safeCity) return;
             addHistory(safeCity);
             setHistory(readHistory());
             if (onSelect) {
@@ -188,9 +319,19 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
                     setCoords(null);
                 }
             }
+            setKeyword('');
             onClose();
         },
         [onClose, onSelect, setCity, setCoords],
+    );
+
+    const handleNavigateHotel = useCallback(
+        (hotelId: number) => {
+            setKeyword('');
+            onClose();
+            navigate(`/hotel/${hotelId}`);
+        },
+        [navigate, onClose],
     );
 
     const clearHistory = () => {
@@ -204,9 +345,7 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
         target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    if (!shouldRender) {
-        return null;
-    }
+    if (!shouldRender) return null;
 
     return (
         <div className="fixed inset-0 z-[100]">
@@ -219,7 +358,7 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
             />
             <div
                 className={cn(
-                    'absolute inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl bg-white flex flex-col transition-transform duration-300 ease-out',
+                    'absolute inset-x-0 bottom-0 h-[90vh] rounded-t-2xl bg-white flex flex-col transition-transform duration-300 ease-out',
                     animateIn ? 'translate-y-0' : 'translate-y-full',
                 )}
                 onClick={(event) => event.stopPropagation()}
@@ -295,6 +434,7 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
 
                 <div ref={scrollRef} className="flex-1 overflow-y-auto relative pr-6">
                     <div className="px-4 pb-24">
+                        {/* 当前定位 */}
                         <div className="pt-1 pb-3">
                             <div className="flex items-center gap-1.5 mb-2">
                                 <span className="text-sm font-medium text-gray-700">当前定位</span>
@@ -339,7 +479,8 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
                             )}
                         </div>
 
-                        {history.length > 0 ? (
+                        {/* 历史搜索 */}
+                        {!isSearching && history.length > 0 ? (
                             <div className="py-3 border-t border-gray-100">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium text-gray-700">历史搜索</span>
@@ -366,29 +507,38 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
                             </div>
                         ) : null}
 
-                        {citiesLoading ? (
+                        {/* 搜索模式：显示联想结果 / 非搜索模式：显示城市列表 */}
+                        {isSearching ? (
+                            <div className="border-t border-gray-100">
+                                <SuggestionList
+                                    suggestions={suggestions ?? []}
+                                    keyword={keywordText}
+                                    isLoading={suggestionsLoading}
+                                    onSelectCity={handleSelect}
+                                    onNavigateHotel={handleNavigateHotel}
+                                />
+                            </div>
+                        ) : citiesLoading ? (
                             <div className="flex items-center justify-center py-12 text-gray-400 text-sm">
                                 加载中...
                             </div>
                         ) : (
                             <>
-                                {!isSearching ? (
-                                    <div id="city-section-hot" className="py-3 border-t border-gray-100">
-                                        <div className="text-sm font-medium text-gray-700 mb-3">热门城市</div>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {hotCities.map((city) => (
-                                                <button
-                                                    key={city}
-                                                    type="button"
-                                                    onClick={() => handleSelect(city)}
-                                                    className="bg-gray-100 text-gray-800 text-sm py-2 rounded-lg text-center active:bg-gray-200 active:text-gray-900 transition-colors"
-                                                >
-                                                    {city}
-                                                </button>
-                                            ))}
-                                        </div>
+                                <div id="city-section-hot" className="py-3 border-t border-gray-100">
+                                    <div className="text-sm font-medium text-gray-700 mb-3">热门城市</div>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {hotCities.map((city) => (
+                                            <button
+                                                key={city}
+                                                type="button"
+                                                onClick={() => handleSelect(city)}
+                                                className="bg-gray-100 text-gray-800 text-sm py-2 rounded-lg text-center active:bg-gray-200 active:text-gray-900 transition-colors"
+                                            >
+                                                {city}
+                                            </button>
+                                        ))}
                                     </div>
-                                ) : null}
+                                </div>
 
                                 {flatRows.length === 0 ? (
                                     <div className="text-center text-gray-400 text-sm py-8">
@@ -400,6 +550,8 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
                             </>
                         )}
                     </div>
+
+                    {/* 字母侧边栏 (仅在非搜索模式) */}
                     {!isSearching ? (
                         <div className="fixed right-1 top-1/2 -translate-y-1/2 z-[101] flex flex-col items-center">
                             <button

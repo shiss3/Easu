@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Search from 'lucide-react/dist/esm/icons/search';
@@ -8,7 +9,7 @@ import Filter from 'lucide-react/dist/esm/icons/filter';
 import Bot from 'lucide-react/dist/esm/icons/bot';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
-import { searchHotelsApi, type HotelVo } from '@/services/hotel-search.ts';
+import type { HotelVo } from '@/services/hotel-search.ts';
 import {
     DEFAULT_GUEST_SELECTION,
     GUEST_SELECTION_STORAGE_KEY,
@@ -18,6 +19,7 @@ import {
 import GuestSelectorComponent from '@/components/GuestSelector';
 import { useGeoLocation } from '@/hooks/useHomeData';
 import { useSearchStore, type DateRange, type DateString } from '@/store/searchStore';
+import { useHotelSearch } from '@/hooks/useHotelSearch';
 
 const CitySelector = lazy(() => import('@/components/Home/CitySelector'));
 const Calendar = lazy(() => import('@/components/Calendar'));
@@ -71,11 +73,12 @@ function getDateHint(dateStr: string): string {
     return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.day()];
 }
 
+const CARD_HEIGHT = 156; // h-36 = 9rem = 144px + 12px gap
+const CARD_GAP = 12;
+
 const SearchResultPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [hotelList, setHotelList] = useState<HotelVo[]>([]);
 
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [isCityVisible, setIsCityVisible] = useState(false);
@@ -148,9 +151,54 @@ const SearchResultPage = () => {
         return Math.max(e.diff(s, 'day'), 1);
     }, [tempDates]);
 
+    // --- Filters from store ---
+    const filters = useSearchStore((s) => s.filters);
+
+    // --- Infinite Query ---
+    const searchQueryParams = useMemo(() => ({
+        city,
+        checkIn: startRaw || undefined,
+        checkOut: endRaw || undefined,
+        guestCount: totalPersons,
+        rooms: guest.rooms,
+        minPrice: filters.minPrice ?? undefined,
+        maxPrice: filters.maxPrice ?? undefined,
+    }), [city, startRaw, endRaw, totalPersons, guest.rooms, filters.minPrice, filters.maxPrice]);
+
+    const {
+        allHotels,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        isError,
+    } = useHotelSearch(searchQueryParams);
+
+    // --- Virtual List ---
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    const virtualizer = useVirtualizer({
+        count: hasNextPage ? allHotels.length + 1 : allHotels.length,
+        getScrollElement: () => scrollContainerRef.current,
+        estimateSize: () => CARD_HEIGHT + CARD_GAP,
+        overscan: 5,
+    });
+
+    const virtualItems = virtualizer.getVirtualItems();
+
+    // Trigger fetchNextPage when the last item is visible
     useEffect(() => {
-        fetchData();
-    }, [city]);
+        const lastItem = virtualItems[virtualItems.length - 1];
+        if (!lastItem) return;
+
+        if (
+            lastItem.index >= allHotels.length - 1 &&
+            hasNextPage &&
+            !isFetchingNextPage
+        ) {
+            fetchNextPage();
+        }
+    }, [virtualItems, allHotels.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     useEffect(() => {
         const store = useSearchStore.getState();
@@ -169,18 +217,6 @@ const SearchResultPage = () => {
             store.setLocatingStatus('idle');
         }
     }, [city, startRaw, endRaw, isLocationMode, latRaw, lngRaw]);
-
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const res = await searchHotelsApi({ city });
-            setHotelList(res.data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const openPanel = () => {
         setTempCity(city);
@@ -223,7 +259,7 @@ const SearchResultPage = () => {
         closePanel();
     };
 
-    const handleLocate = async () => {
+    const handleLocate = useCallback(async () => {
         if (isLocating) return;
         const result = await triggerLocate();
         if (result) {
@@ -238,12 +274,12 @@ const SearchResultPage = () => {
             setTempAddressHint(result.addressHint);
             setTempIsLocationMode(true);
         }
-    };
+    }, [isLocating, triggerLocate]);
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-1">
+        <div className="flex flex-col h-screen bg-gray-50">
             {/* 顶部导航与搜索栏 */}
-            <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
+            <div className="sticky top-0 z-40 bg-white border-b border-gray-100 shrink-0">
                 <div className="flex items-center px-3 py-2 gap-3">
                     <ChevronLeft
                         size={24}
@@ -447,16 +483,55 @@ const SearchResultPage = () => {
                 />
             </Suspense>
 
-            {/* 酒店列表 */}
-            <div className="p-3 flex flex-col gap-3">
-                {loading ? (
-                    <div className="text-center py-10 text-gray-400">加载中...</div>
-                ) : hotelList.length === 0 ? (
+            {/* 虚拟化酒店列表 */}
+            <div ref={scrollContainerRef} className="flex-1 overflow-auto">
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-20 text-gray-400">
+                        <Loader2 size={24} className="animate-spin mr-2" />
+                        加载中...
+                    </div>
+                ) : isError ? (
+                    <div className="text-center py-10 text-red-400">加载失败，请重试</div>
+                ) : allHotels.length === 0 ? (
                     <div className="text-center py-10 text-gray-400">暂无符合条件的酒店</div>
                 ) : (
-                    hotelList.map((hotel) => (
-                        <HotelCard key={hotel.id} data={hotel} />
-                    ))
+                    <div
+                        className="relative w-full px-3 pt-3"
+                        style={{ height: virtualizer.getTotalSize() + 12 }}
+                    >
+                        {virtualItems.map((virtualRow) => {
+                            const isLoaderRow = virtualRow.index >= allHotels.length;
+                            if (isLoaderRow) {
+                                return (
+                                    <div
+                                        key="loader"
+                                        className="absolute left-3 right-3 flex items-center justify-center py-4 text-gray-400"
+                                        style={{
+                                            top: virtualRow.start,
+                                            height: virtualRow.size,
+                                        }}
+                                    >
+                                        <Loader2 size={20} className="animate-spin mr-2" />
+                                        加载更多...
+                                    </div>
+                                );
+                            }
+
+                            const hotel = allHotels[virtualRow.index];
+                            return (
+                                <div
+                                    key={hotel.id}
+                                    className="absolute left-3 right-3"
+                                    style={{
+                                        top: virtualRow.start,
+                                        height: virtualRow.size - CARD_GAP,
+                                    }}
+                                >
+                                    <HotelCard data={hotel} />
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
         </div>
@@ -469,17 +544,24 @@ const HotelCard = ({ data }: { data: HotelVo }) => {
     return (
         <div
             onClick={() => navigate(`/hotel/${data.id}`)}
-            className="flex bg-white rounded-lg overflow-hidden shadow-sm h-36"
+            className="flex bg-white rounded-lg overflow-hidden shadow-sm h-full"
         >
             <div className="w-1/3 relative">
                 <img
                     src={data.coverImage || 'https://placehold.co/200x300'}
                     alt={data.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                 />
-                <div className="absolute top-0 left-0 bg-blue-600 text-white text-[10px] px-1 py-0.5 rounded-br-lg">
-                    精选
-                </div>
+                {data.isFallback ? (
+                    <div className="absolute top-0 left-0 bg-amber-500 text-white text-[10px] px-1 py-0.5 rounded-br-lg">
+                        推荐
+                    </div>
+                ) : (
+                    <div className="absolute top-0 left-0 bg-blue-600 text-white text-[10px] px-1 py-0.5 rounded-br-lg">
+                        精选
+                    </div>
+                )}
             </div>
 
             <div className="w-2/3 p-3 flex flex-col justify-between">
