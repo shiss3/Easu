@@ -86,6 +86,7 @@ const SearchResultPage = () => {
     const [showPriceSelector, setShowPriceSelector] = useState(false);
 
     const city = searchParams.get('city') || '上海';
+    const keywordFromUrl = searchParams.get('keyword') || '';
     const latRaw = searchParams.get('lat');
     const lngRaw = searchParams.get('lng');
     const isLocationMode = latRaw !== null && lngRaw !== null;
@@ -203,6 +204,7 @@ const SearchResultPage = () => {
     useEffect(() => {
         const store = useSearchStore.getState();
         store.setCity(city);
+        store.setKeyword(keywordFromUrl);
         if (startRaw && endRaw) {
             store.setDateRange({ start: startRaw as DateString, end: endRaw as DateString });
         }
@@ -216,7 +218,7 @@ const SearchResultPage = () => {
             store.setCoords(null);
             store.setLocatingStatus('idle');
         }
-    }, [city, startRaw, endRaw, isLocationMode, latRaw, lngRaw]);
+    }, [city, keywordFromUrl, startRaw, endRaw, isLocationMode, latRaw, lngRaw]);
 
     const openPanel = () => {
         setTempCity(city);
@@ -314,11 +316,13 @@ const SearchResultPage = () => {
                         </div>
 
                         <div
-                            className="flex items-center text-gray-400 gap-1 flex-1 pl-2 cursor-pointer"
+                            className="flex items-center gap-1 flex-1 pl-2 cursor-pointer"
                             onClick={() => setIsCityVisible(true)}
                         >
-                            <Search size={14} />
-                            <span className="text-xs truncate">位置/品牌/酒店</span>
+                            <Search size={14} className={keywordFromUrl ? 'text-blue-600' : 'text-gray-400'} />
+                            <span className={`text-xs truncate ${keywordFromUrl ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                                {keywordFromUrl || '位置/品牌/酒店'}
+                            </span>
                         </div>
                     </div>
 
@@ -437,18 +441,29 @@ const SearchResultPage = () => {
                 <CitySelector
                     visible={isCityVisible}
                     onClose={() => setIsCityVisible(false)}
+                    initialKeyword={keywordFromUrl}
                     onSelect={(result) => {
-                        if (isPanelOpen) {
-                            setTempCity(result.city);
-                            setTempAddressHint('');
-                            setTempIsLocationMode(false);
+                        const next = new URLSearchParams(searchParams);
+
+                        if (result.keyword !== undefined) {
+                            next.set('keyword', result.keyword);
+                            useSearchStore.getState().setKeyword(result.keyword);
                         } else {
-                            const next = new URLSearchParams(searchParams);
-                            next.set('city', result.city);
-                            next.delete('lat');
-                            next.delete('lng');
-                            setSearchParams(next, { replace: true });
+                            next.delete('keyword');
+                            useSearchStore.getState().setKeyword('');
+
+                            if (isPanelOpen) {
+                                setTempCity(result.city);
+                                setTempAddressHint('');
+                                setTempIsLocationMode(false);
+                            } else {
+                                next.set('city', result.city);
+                                next.delete('lat');
+                                next.delete('lng');
+                            }
                         }
+
+                        setSearchParams(next, { replace: true });
                         setIsCityVisible(false);
                     }}
                     currentLocation={{

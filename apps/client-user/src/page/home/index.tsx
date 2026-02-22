@@ -1,6 +1,7 @@
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Search from 'lucide-react/dist/esm/icons/search';
+import X from 'lucide-react/dist/esm/icons/x';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +31,8 @@ const HomePage = () => {
     const dateRange = useSearchStore((state) => state.dateRange);
     const filters = useSearchStore((state) => state.filters);
     const searchType = useSearchStore((state) => state.searchType);
+    const keyword = useSearchStore((state) => state.keyword);
+    const setKeyword = useSearchStore((state) => state.setKeyword);
     const setSearchType = useSearchStore((state) => state.setSearchType);
     const setDateRange = useSearchStore((state) => state.setDateRange);
     const hydrateFromUrl = useSearchStore((state) => state.hydrateFromUrl);
@@ -106,6 +109,9 @@ const HomePage = () => {
         }
         if (filters.stars?.length) {
             params.set('stars', filters.stars.join(','));
+        }
+        if (keyword) {
+            params.set('keyword', keyword);
         }
         navigate(`/search?${params.toString()}`);
     };
@@ -189,14 +195,25 @@ const HomePage = () => {
                             {isLocationMode ? '我的位置' : city}
                             <ChevronDown size={18} className="text-gray-600 ml-0.5" />
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => setCitySelectorVisible(true)}
-                            className="flex-1 ml-4 text-gray-400 text-sm flex items-center cursor-pointer"
-                        >
-                            <Search size={16} className="mr-2"/>
-                            位置/品牌/酒店
-                        </button>
+                        <div className="relative flex-1 ml-4">
+                            <button
+                                type="button"
+                                onClick={() => setCitySelectorVisible(true)}
+                                className={`w-full text-sm flex items-center cursor-pointer ${keyword ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}
+                            >
+                                <Search size={16} className="mr-2 shrink-0" />
+                                <span className="truncate">{keyword || '位置/品牌/酒店'}</span>
+                            </button>
+                            {keyword && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setKeyword(''); }}
+                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center"
+                                >
+                                    <X size={12} className="text-gray-600" />
+                                </button>
+                            )}
+                        </div>
                         <button
                             type="button"
                             onClick={handleLocationClick}

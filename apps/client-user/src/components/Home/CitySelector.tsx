@@ -18,12 +18,14 @@ import { useSearchStore } from '@/store/searchStore';
 export interface CitySelectResult {
     city: string;
     location?: { lat: number; lng: number; name: string };
+    keyword?: string;
 }
 
 interface CitySelectorProps {
     visible: boolean;
     onClose: () => void;
     onSelect?: (result: CitySelectResult) => void;
+    initialKeyword?: string;
     currentLocation?: {
         status: LocateStatus;
         city?: string;
@@ -242,10 +244,11 @@ const SuggestionList = ({
 
 /* ---------- Main component ---------- */
 
-const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLocation }: CitySelectorProps) => {
+const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocation, onRequestLocation }: CitySelectorProps) => {
     const navigate = useNavigate();
     const setCity = useSearchStore((state) => state.setCity);
     const setCoords = useSearchStore((state) => state.setCoords);
+    const setStoreKeyword = useSearchStore((state) => state.setKeyword);
     const { data: citiesData, isLoading: citiesLoading } = useCityList();
 
     const [keyword, setKeyword] = useState('');
@@ -276,8 +279,11 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
     useEffect(() => {
         if (visible) {
             setHistory(readHistory());
+            if (initialKeyword) {
+                setKeyword(initialKeyword);
+            }
         }
-    }, [visible]);
+    }, [visible, initialKeyword]);
 
     const hotCities = useMemo(() => citiesData?.hotCities ?? [], [citiesData]);
     const alphabet = useMemo(() => citiesData?.alphabet ?? [], [citiesData]);
@@ -304,15 +310,28 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
     }, [allCityGroups]);
 
     const handleSelect = useCallback(
-        (city: string, location?: CitySelectResult['location']) => {
-            const safeCity = city.trim();
-            if (!safeCity) return;
-            addHistory(safeCity);
+        (city: string, location?: CitySelectResult['location'], type: 'city' | 'keyword' = 'city') => {
+            const safeValue = city.trim();
+            if (!safeValue) return;
+
+            if (type === 'keyword') {
+                if (onSelect) {
+                    onSelect({ city: safeValue, keyword: safeValue });
+                } else {
+                    setStoreKeyword(safeValue);
+                }
+                setKeyword('');
+                onClose();
+                return;
+            }
+
+            addHistory(safeValue);
             setHistory(readHistory());
             if (onSelect) {
-                onSelect({ city: safeCity, location });
+                onSelect({ city: safeValue, location });
             } else {
-                setCity(safeCity);
+                setCity(safeValue);
+                setStoreKeyword('');
                 if (location) {
                     setCoords({ lat: location.lat, lng: location.lng });
                 } else {
@@ -322,7 +341,7 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
             setKeyword('');
             onClose();
         },
-        [onClose, onSelect, setCity, setCoords],
+        [onClose, onSelect, setCity, setCoords, setStoreKeyword],
     );
 
     const handleNavigateHotel = useCallback(
@@ -423,7 +442,7 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
                             </button>
                             <button
                                 type="button"
-                                onClick={() => handleSelect(keywordText)}
+                                onClick={() => handleSelect(keywordText, undefined, 'keyword')}
                                 className="shrink-0 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-base font-semibold px-7 py-2 rounded-full active:opacity-90 transition-opacity shadow-md shadow-blue-200/50"
                             >
                                 搜索
@@ -514,7 +533,7 @@ const CitySelector = ({ visible, onClose, onSelect, currentLocation, onRequestLo
                                     suggestions={suggestions ?? []}
                                     keyword={keywordText}
                                     isLoading={suggestionsLoading}
-                                    onSelectCity={handleSelect}
+                                    onSelectCity={(city) => handleSelect(city, undefined, 'keyword')}
                                     onNavigateHotel={handleNavigateHotel}
                                 />
                             </div>

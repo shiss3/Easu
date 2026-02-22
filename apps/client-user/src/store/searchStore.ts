@@ -45,6 +45,7 @@ interface SearchState {
     dateRange: DateRange;
     filters: SearchFilters;
     searchType: SearchType;
+    keyword: string;
     locatingStatus: LocateStatus;
     setCity: (city: string) => void;
     setDateRange: (range: DateRange) => void;
@@ -54,6 +55,7 @@ interface SearchState {
     setFilters: (next: Partial<SearchFilters>) => void;
     resetFilters: () => void;
     setSearchType: (type: SearchType) => void;
+    setKeyword: (keyword: string) => void;
     setLocatingStatus: (status: LocateStatus) => void;
     hydrateFromUrl: (params: URLSearchParams) => void;
     hydrateFromStorage: () => void;
@@ -157,6 +159,7 @@ export const useSearchStore = create<SearchState>()(
             dateRange: getDefaultDateRange(),
             filters: { ...DEFAULT_FILTERS },
             searchType: DEFAULT_SEARCH_TYPE,
+            keyword: '',
             locatingStatus: 'idle',
             setCity: (city) => set({ city: city.trim() || DEFAULT_CITY }),
             setDateRange: (range) => set({ dateRange: normalizeDateRange(range) }),
@@ -194,6 +197,7 @@ export const useSearchStore = create<SearchState>()(
             },
             resetFilters: () => set({ filters: { ...DEFAULT_FILTERS } }),
             setSearchType: (searchType) => set({ searchType }),
+            setKeyword: (keyword) => set({ keyword }),
             setLocatingStatus: (status) => set({ locatingStatus: status }),
             hydrateFromUrl: (params) => {
                 const patch: Partial<SearchState> = {};
@@ -236,6 +240,11 @@ export const useSearchStore = create<SearchState>()(
                     patch.searchType = searchType;
                 }
 
+                const keyword = params.get('keyword');
+                if (keyword !== null) {
+                    patch.keyword = keyword;
+                }
+
                 if (Object.keys(patch).length > 0) {
                     set(patch);
                 }
@@ -261,6 +270,7 @@ export const useSearchStore = create<SearchState>()(
                                 | 'dateRange'
                                 | 'filters'
                                 | 'searchType'
+                                | 'keyword'
                             >
                         >;
                     };
@@ -283,6 +293,7 @@ export const useSearchStore = create<SearchState>()(
                             fromStorage.searchType === 'hourly' || fromStorage.searchType === 'hotel'
                                 ? fromStorage.searchType
                                 : DEFAULT_SEARCH_TYPE,
+                        keyword: fromStorage.keyword ?? '',
                     });
                 } catch {
                     set({
@@ -295,6 +306,7 @@ export const useSearchStore = create<SearchState>()(
                         dateRange: getDefaultDateRange(),
                         filters: { ...DEFAULT_FILTERS },
                         searchType: DEFAULT_SEARCH_TYPE,
+                        keyword: '',
                     });
                 }
             },
@@ -312,6 +324,7 @@ export const useSearchStore = create<SearchState>()(
                 dateRange: state.dateRange,
                 filters: state.filters,
                 searchType: state.searchType,
+                keyword: state.keyword,
             }),
             onRehydrateStorage: () => (state) => {
                 if (!state) {
