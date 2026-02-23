@@ -15,6 +15,7 @@ const searchSchema = z.object({
     keyword: z.string().optional(),
     minPrice: z.number().int().min(0).optional().nullable(),
     maxPrice: z.number().int().min(0).optional().nullable(),
+    sort: z.enum(['default', 'rating', 'price_low', 'price_high']).optional(),
     cursor: z.number().int().min(0).optional(),
     limit: z.number().int().min(1).max(50).optional(),
 });
@@ -31,6 +32,19 @@ function safeInt(val: unknown, fallback: number, min = 0, max = PG_INT4_MAX): nu
 function safeBool(val: unknown): boolean {
     if (val === true || val === 'true' || val === 1) return true;
     return false;
+}
+
+function getOrderByClause(sort: string): string {
+    switch (sort) {
+        case 'price_low':
+            return 'min_price ASC, relevance_score DESC, h."sortOrder" ASC';
+        case 'price_high':
+            return 'min_price DESC, relevance_score DESC, h."sortOrder" ASC';
+        case 'rating':
+            return '(h.score * LOG((h."reviewCount" + 10)::numeric)) DESC, relevance_score DESC, h."sortOrder" ASC';
+        default:
+            return 'relevance_score DESC, h."sortOrder" ASC, h.score DESC, h."reviewCount" DESC';
+    }
 }
 
 interface RawHotelRow {
@@ -65,6 +79,7 @@ export const searchHotels = async (req: Request, res: Response) => {
             checkIn,
             checkOut,
             keyword,
+            sort,
         } = parsed.data;
 
         const guestCount = safeInt(parsed.data.guestCount, 1, 1, 99);
@@ -81,6 +96,7 @@ export const searchHotels = async (req: Request, res: Response) => {
         const pChildrenFriendly = safeBool(parsed.data.childrenFriendly);
         const pCity = (city ?? '').trim();
         const pKeyword = (keyword ?? '').trim();
+        const pSort = sort ?? 'default';
 
         const hasDateRange = checkIn && checkOut;
         const checkInDate = hasDateRange ? dayjs(checkIn).startOf('day').toDate() : null;
@@ -95,7 +111,7 @@ export const searchHotels = async (req: Request, res: Response) => {
         if (hasDateRange && nightCount > 0) {
             try {
                 exactMatches = await prisma.$queryRawUnsafe<RawHotelRow[]>(
-                    buildExactQuery(),
+                    buildExactQuery(pSort),
                     checkInDate,        // $1
                     checkOutDate,       // $2
                     rooms,              // $3
@@ -119,7 +135,7 @@ export const searchHotels = async (req: Request, res: Response) => {
         if (exactMatches.length === 0) {
             try {
                 recommendations = await prisma.$queryRawUnsafe<RawHotelRow[]>(
-                    buildFallbackQuery(),
+                    buildFallbackQuery(pSort),
                     pCity,              // $1
                     pKeyword,           // $2
                     guestCount,         // $3
@@ -139,7 +155,7 @@ export const searchHotels = async (req: Request, res: Response) => {
         if (exactMatches.length === 0 && recommendations.length === 0) {
             try {
                 recommendations = await prisma.$queryRawUnsafe<RawHotelRow[]>(
-                    buildGlobalFallbackQuery(),
+                    buildGlobalFallbackQuery(pSort),
                     pKeyword,           // $1
                     limit,              // $2
                     cursor,             // $3
@@ -197,7 +213,8 @@ export const searchHotels = async (req: Request, res: Response) => {
  * $10 = minPrice, $11 = maxPrice,
  * $12 = limit, $13 = offset, $14 = nightCount
  */
-function buildExactQuery(): string {
+function buildExactQuery(sort: string): string {
+    const orderBy = getOrderByClause(sort);
     return `
 WITH available_room_types AS (
     SELECT
@@ -258,16 +275,12 @@ LEFT JOIN room_type_features rtf ON rtf.hotel_id = h.id
 WHERE
     h.status = 1
     AND ($5::text = '' OR h.city = $5::text)
-    AND ($6::text = '' OR h.name ILIKE '%' || $6::text || '%' OR h.city ILIKE '%' || $6::text || '%')
+    AND ($6::text = '' OR h.name ILIKE '%' || $6::text || '%' OR h.city ILIKE '%' || $6::text || '%' OR array_to_string(h.tags, ',') ILIKE '%' || $6::text || '%')
     AND (
         ($10::int = 0 AND $11::int >= ${PG_INT4_MAX})
         OR (hmp.min_price BETWEEN $10::int AND $11::int)
     )
-ORDER BY
-    relevance_score DESC,
-    h."sortOrder" ASC,
-    h.score DESC,
-    h."reviewCount" DESC
+ORDER BY ${orderBy}
 LIMIT $12::int
 OFFSET $13::int
 `;
@@ -281,7 +294,8 @@ OFFSET $13::int
  * $6 = hasWindow, $7 = hasBreakfast, $8 = childrenFriendly,
  * $9 = limit, $10 = offset
  */
-function buildFallbackQuery(): string {
+function buildFallbackQuery(sort: string): string {
+    const orderBy = getOrderByClause(sort);
     return `
 WITH hotel_room_info AS (
     SELECT
@@ -320,17 +334,13 @@ LEFT JOIN hotel_room_info hri ON hri.hotel_id = h.id
 WHERE
     h.status = 1
     AND ($1::text = '' OR h.city ILIKE '%' || $1::text || '%')
-    AND ($2::text = '' OR h.name ILIKE '%' || $2::text || '%' OR h.city ILIKE '%' || $2::text || '%')
+    AND ($2::text = '' OR h.name ILIKE '%' || $2::text || '%' OR h.city ILIKE '%' || $2::text || '%' OR array_to_string(h.tags, ',') ILIKE '%' || $2::text || '%')
     AND (
         ($4::int = 0 AND $5::int >= ${PG_INT4_MAX})
         OR (COALESCE(hri.min_price, 0) BETWEEN $4::int AND $5::int)
     )
     AND ($3::int <= 1 OR COALESCE(hri.max_capacity, 99) >= $3::int)
-ORDER BY
-    relevance_score DESC,
-    h."sortOrder" ASC,
-    h.score DESC,
-    h."reviewCount" DESC
+ORDER BY ${orderBy}
 LIMIT $9::int
 OFFSET $10::int
 `;
@@ -341,7 +351,8 @@ OFFSET $10::int
  * 当精确查询和降级查询均无结果时，返回热门酒店。
  * $1 = keyword, $2 = limit, $3 = offset
  */
-function buildGlobalFallbackQuery(): string {
+function buildGlobalFallbackQuery(sort: string): string {
+    const orderBy = getOrderByClause(sort);
     return `
 WITH hotel_min_prices AS (
     SELECT rt."hotelId" AS hotel_id, MIN(rt.price) AS min_price
@@ -367,10 +378,7 @@ SELECT
 FROM "Hotel" h
 LEFT JOIN hotel_min_prices hmp ON hmp.hotel_id = h.id
 WHERE h.status = 1
-ORDER BY
-    h."sortOrder" ASC,
-    h.score DESC,
-    h."reviewCount" DESC
+ORDER BY ${orderBy}
 LIMIT $2::int
 OFFSET $3::int
 `;

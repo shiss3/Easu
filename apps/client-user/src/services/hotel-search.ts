@@ -12,6 +12,7 @@ export interface HotelSearchParams {
     keyword?: string;
     minPrice?: number;
     maxPrice?: number;
+    sort?: string;
     cursor?: number;
     limit?: number;
 }

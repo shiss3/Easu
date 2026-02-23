@@ -5,7 +5,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import Banner from '@/components/Home/Banner';
 import GuestSelector from '@/components/GuestSelector';
@@ -195,25 +195,24 @@ const HomePage = () => {
                             {isLocationMode ? '我的位置' : city}
                             <ChevronDown size={18} className="text-gray-600 ml-0.5" />
                         </button>
-                        <div className="relative flex-1 ml-4">
-                            <button
-                                type="button"
-                                onClick={() => setCitySelectorVisible(true)}
-                                className={`w-full text-sm flex items-center cursor-pointer ${keyword ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}
-                            >
-                                <Search size={16} className="mr-2 shrink-0" />
+                        <button
+                            type="button"
+                            onClick={() => setCitySelectorVisible(true)}
+                            className={`flex-1 ml-4 min-w-0 flex items-center cursor-pointer ${keyword ? 'text-gray-900 font-bold text-xl' : 'text-gray-400 text-sm'}`}
+                        >
+                            <Search size={16} className="mr-2 shrink-0" />
+                            <span className="relative inline-flex items-center min-w-0 pr-4">
                                 <span className="truncate">{keyword || '位置/品牌/酒店'}</span>
-                            </button>
-                            {keyword && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); setKeyword(''); }}
-                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center"
-                                >
-                                    <X size={12} className="text-gray-600" />
-                                </button>
-                            )}
-                        </div>
+                                {keyword && (
+                                    <span
+                                        className="absolute top-0 -right-0.5 w-3.5 h-3.5 rounded-full bg-gray-300 flex items-center justify-center"
+                                        onClick={(e) => { e.stopPropagation(); setKeyword(''); }}
+                                    >
+                                        <X size={8} className="text-gray-500" />
+                                    </span>
+                                )}
+                            </span>
+                        </button>
                         <button
                             type="button"
                             onClick={handleLocationClick}
@@ -283,43 +282,6 @@ const HomePage = () => {
                 </div>
             </div>
 
-            {/* 3. 营销入口 Grid (图1下半部分) */}
-            <div className="px-4 mt-6">
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                    <MarketingCard title="口碑榜" sub="城市精选" icon="🏆" />
-                    <MarketingCard 
-                        title="AI智选" 
-                        sub="问问小宿" 
-                        icon="🏷️" 
-                        onClick={() => navigate('/ai-assistant')}
-                    />
-                    <MarketingCard title="超值低价" sub="7折起" icon="📉" />
-                </div>
-
-                {/* 季节性Banner */}
-                {/*<div className="bg-gradient-to-r from-orange-400 to-red-500 rounded-lg p-4 text-white">*/}
-                {/*    <div className="flex justify-between items-center mb-4">*/}
-                {/*        <h3 className="font-bold text-lg flex items-center gap-2">*/}
-                {/*            🍂 步履秋冬，即刻出发*/}
-                {/*        </h3>*/}
-                {/*        <ChevronRight size={20}/>*/}
-                {/*    </div>*/}
-                {/*    /!* 横向滚动区域 *!/*/}
-                {/*    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">*/}
-                {/*        <FeatureChip label="♨️ 暖冬温泉" active />*/}
-                {/*        <FeatureChip label="🏖️ 过冬·避寒" />*/}
-                {/*        <FeatureChip label="❄️ 冰雪狂欢" />*/}
-                {/*    </div>*/}
-
-                {/*    /!* 推荐酒店卡片容器 (水平滚动) *!/*/}
-                {/*    <div className="flex gap-3 mt-4 overflow-x-auto pb-2">*/}
-                {/*        {[1,2,3].map(i => (*/}
-                {/*            <div key={i} className="min-w-[140px] h-[100px] bg-white/20 rounded-lg border border-white/30"></div>*/}
-                {/*        ))}*/}
-                {/*    </div>*/}
-                {/*</div>*/}
-            </div>
-
             <Suspense fallback={null}>
                 <Calendar
                     visible={calendarVisible}
@@ -334,6 +296,7 @@ const HomePage = () => {
                 <CitySelector
                     visible={citySelectorVisible}
                     onClose={() => setCitySelectorVisible(false)}
+                    initialKeyword={keyword}
                     currentLocation={{
                         status: locationStatus,
                         city: location?.city || city,
@@ -354,30 +317,5 @@ const HomePage = () => {
         </div>
     );
 };
-
-// 辅助小组件
-interface MarketingCardProps {
-    title: string;
-    sub: string;
-    icon: ReactNode;
-    onClick?: () => void;
-}
-
-const MarketingCard = ({ title, sub, icon, onClick }: MarketingCardProps) => (
-    <div 
-        className="bg-white p-3 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-95 transition-transform"
-        onClick={onClick}
-    >
-        <div className="text-2xl mb-1">{icon}</div>
-        <div className="font-bold text-gray-800 text-sm">{title}</div>
-        <div className="text-xs text-gray-500">{sub}</div>
-    </div>
-);
-
-// const FeatureChip = ({ label, active }: any) => (
-//     <div className={`whitespace-nowrap px-3 py-1.5 rounded text-sm ${active ? 'bg-white text-orange-600 font-bold' : 'bg-white/20 text-white'}`}>
-//         {label}
-//     </div>
-// );
 
 export default HomePage;

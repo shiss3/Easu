@@ -18,6 +18,7 @@ export interface UseHotelSearchParams {
     keyword?: string;
     minPrice?: number;
     maxPrice?: number;
+    sort?: string;
 }
 
 const PAGE_SIZE = 20;

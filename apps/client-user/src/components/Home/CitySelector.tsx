@@ -401,7 +401,7 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
                                     type="text"
                                     value={keyword}
                                     onChange={(event) => setKeyword(event.target.value)}
-                                    placeholder="城市/区域/景点/品牌/酒店"
+                                    placeholder="城市/品牌/酒店/酒店设施"
                                     className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400 pr-6"
                                 />
                                 {keyword ? (

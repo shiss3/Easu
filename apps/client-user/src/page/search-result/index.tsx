@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -6,10 +6,12 @@ import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Filter from 'lucide-react/dist/esm/icons/filter';
-import Bot from 'lucide-react/dist/esm/icons/bot';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
+import X from 'lucide-react/dist/esm/icons/x';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import type { HotelVo } from '@/services/hotel-search.ts';
+import type { SortOption } from '@/components/SortSelector';
 import {
     DEFAULT_GUEST_SELECTION,
     GUEST_SELECTION_STORAGE_KEY,
@@ -24,11 +26,24 @@ import { useHotelSearch } from '@/hooks/useHotelSearch';
 const CitySelector = lazy(() => import('@/components/Home/CitySelector'));
 const Calendar = lazy(() => import('@/components/Calendar'));
 const PriceStarSelector = lazy(() => import('@/components/Home/PriceStarSelector'));
+const SortSelector = lazy(() => import('@/components/SortSelector'));
 
 const DATE_FORMAT = 'YYYY-MM-DD';
-const LAZY_FALLBACK = (
-    <div className="p-4 text-center text-gray-500">加载组件中...</div>
-);
+const LAZY_FALLBACK = null
+
+const SORT_LABEL_MAP: Record<SortOption, string> = {
+    default: '默认排序',
+    rating: '好评优先',
+    price_low: '低价优先',
+    price_high: '高价优先',
+};
+
+const FALLBACK_BANNER_MAP: Partial<Record<SortOption, string>> = {
+    default: '以下为为您推荐的酒店',
+    rating: '以下是不完全满足"好评优先"的酒店',
+    price_low: '以下是不完全满足"低价优先"的酒店',
+    price_high: '以下是不完全满足"高价优先"的酒店',
+};
 
 function readGuestSelection(): GuestSelection {
     try {
@@ -84,6 +99,10 @@ const SearchResultPage = () => {
     const [isCityVisible, setIsCityVisible] = useState(false);
     const [isCalendarVisible, setIsCalendarVisible] = useState(false);
     const [showPriceSelector, setShowPriceSelector] = useState(false);
+    const [showSortSelector, setShowSortSelector] = useState(false);
+    const [sortValue, setSortValue] = useState<SortOption>('default');
+    const headerRef = useRef<HTMLDivElement>(null);
+    const [headerHeight, setHeaderHeight] = useState(0);
 
     const city = searchParams.get('city') || '上海';
     const keywordFromUrl = searchParams.get('keyword') || '';
@@ -164,7 +183,8 @@ const SearchResultPage = () => {
         rooms: guest.rooms,
         minPrice: filters.minPrice ?? undefined,
         maxPrice: filters.maxPrice ?? undefined,
-    }), [city, startRaw, endRaw, totalPersons, guest.rooms, filters.minPrice, filters.maxPrice]);
+        sort: sortValue !== 'default' ? sortValue : undefined,
+    }), [city, startRaw, endRaw, totalPersons, guest.rooms, filters.minPrice, filters.maxPrice, sortValue]);
 
     const {
         allHotels,
@@ -219,6 +239,18 @@ const SearchResultPage = () => {
             store.setLocatingStatus('idle');
         }
     }, [city, keywordFromUrl, startRaw, endRaw, isLocationMode, latRaw, lngRaw]);
+
+    useLayoutEffect(() => {
+        const el = headerRef.current;
+        if (!el) return;
+        const update = () => setHeaderHeight(el.offsetHeight);
+        update();
+        const observer = new ResizeObserver(update);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    const closeSortSelector = useCallback(() => setShowSortSelector(false), []);
 
     const openPanel = () => {
         setTempCity(city);
@@ -281,8 +313,8 @@ const SearchResultPage = () => {
     return (
         <div className="flex flex-col h-screen bg-gray-50">
             {/* 顶部导航与搜索栏 */}
-            <div className="sticky top-0 z-40 bg-white border-b border-gray-100 shrink-0">
-                <div className="flex items-center px-3 py-2 gap-3">
+            <div ref={headerRef} className="sticky top-0 z-40 bg-white border-b border-gray-100 shrink-0 pt-2">
+                <div className="flex items-center px-3 py-2.5 gap-3">
                     <ChevronLeft
                         size={24}
                         className="shrink-0 cursor-pointer"
@@ -293,7 +325,10 @@ const SearchResultPage = () => {
                     <div className="flex-1 bg-gray-100 rounded-full py-1.5 px-3 flex items-center justify-between">
                         <div
                             className="flex items-center gap-3 pr-2 border-r border-gray-300 cursor-pointer"
-                            onClick={isPanelOpen ? closePanel : openPanel}
+                            onClick={() => {
+                                if (showSortSelector) { closeSortSelector(); return; }
+                                isPanelOpen ? closePanel() : openPanel();
+                            }}
                         >
                             <div className="flex flex-col items-center justify-center text-[11px] font-bold text-gray-800 leading-tight gap-0.5">
                                 {isLocationMode || city === '我的位置' ? (
@@ -316,21 +351,43 @@ const SearchResultPage = () => {
                         </div>
 
                         <div
-                            className="flex items-center gap-1 flex-1 pl-2 cursor-pointer"
-                            onClick={() => setIsCityVisible(true)}
+                            className="flex items-center gap-1 flex-1 pl-2 cursor-pointer min-w-0"
+                            onClick={() => {
+                                if (showSortSelector) { closeSortSelector(); return; }
+                                setIsCityVisible(true);
+                            }}
                         >
-                            <Search size={14} className={keywordFromUrl ? 'text-blue-600' : 'text-gray-400'} />
-                            <span className={`text-xs truncate ${keywordFromUrl ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
-                                {keywordFromUrl || '位置/品牌/酒店'}
+                            <Search size={14} className="shrink-0 text-gray-400" />
+                            <span className="relative inline-flex items-center min-w-0 pr-4">
+                                <span className={`truncate ${keywordFromUrl ? 'text-gray-900 font-bold text-sm' : 'text-gray-400 text-xs'}`}>
+                                    {keywordFromUrl || '位置/品牌/酒店'}
+                                </span>
+                                {keywordFromUrl && (
+                                    <span
+                                        className="absolute top-0 -right-0.5 w-3.5 h-3.5 rounded-full bg-gray-300 flex items-center justify-center"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const next = new URLSearchParams(searchParams);
+                                            next.delete('keyword');
+                                            setSearchParams(next, { replace: true });
+                                            useSearchStore.getState().setKeyword('');
+                                        }}
+                                    >
+                                        <X size={8} className="text-gray-500" />
+                                    </span>
+                                )}
                             </span>
                         </div>
                     </div>
 
                     <div
                         className="flex flex-col items-center justify-center text-gray-600 gap-0.5 shrink-0 cursor-pointer"
-                        onClick={() => navigate('/ai-assistant')}
+                        onClick={() => {
+                            if (showSortSelector) { closeSortSelector(); return; }
+                            navigate('/ai-assistant');
+                        }}
                     >
-                        <Bot size={20} className="text-gray-700" />
+                        <Sparkles size={15} className="text-indigo-500" />
                         <span className="text-[10px] font-medium">小宿</span>
                     </div>
                 </div>
@@ -409,15 +466,27 @@ const SearchResultPage = () => {
                     </div>
                 ) : (
                     <div className="flex justify-around text-xs py-2 text-gray-600 border-t border-gray-50">
-                        <span className="font-bold text-blue-600 flex items-center gap-0.5">
-                            智能排序 <ChevronDown size={12} />
+                        <span
+                            className={`font-bold flex items-center gap-0.5 cursor-pointer ${
+                                sortValue !== 'default' || showSortSelector ? 'text-blue-600' : 'text-gray-600'
+                            }`}
+                            onClick={() => setShowSortSelector((v) => !v)}
+                        >
+                            {SORT_LABEL_MAP[sortValue]}
+                            <ChevronDown
+                                size={12}
+                                className={`transition-transform duration-200 ${showSortSelector ? 'rotate-180' : ''}`}
+                            />
                         </span>
                         <span className="flex items-center gap-0.5">
                             位置距离 <ChevronDown size={12} />
                         </span>
                         <span
                             className="flex items-center gap-0.5 cursor-pointer"
-                            onClick={() => setShowPriceSelector(true)}
+                            onClick={() => {
+                                setShowSortSelector(false);
+                                setShowPriceSelector(true);
+                            }}
                         >
                             价格/星级 <ChevronDown size={12} />
                         </span>
@@ -498,6 +567,17 @@ const SearchResultPage = () => {
                 />
             </Suspense>
 
+            {/* 懒加载弹窗：排序选择器 */}
+            <Suspense fallback={null}>
+                <SortSelector
+                    visible={showSortSelector}
+                    value={sortValue}
+                    onChange={setSortValue}
+                    onClose={closeSortSelector}
+                    topOffset={headerHeight}
+                />
+            </Suspense>
+
             {/* 虚拟化酒店列表 */}
             <div ref={scrollContainerRef} className="flex-1 overflow-auto">
                 {isLoading ? (
@@ -533,6 +613,10 @@ const SearchResultPage = () => {
                             }
 
                             const hotel = allHotels[virtualRow.index];
+                            const isFirstFallback =
+                                hotel.isFallback === true &&
+                                (virtualRow.index === 0 || allHotels[virtualRow.index - 1].isFallback === false);
+
                             return (
                                 <div
                                     key={hotel.id}
@@ -542,6 +626,15 @@ const SearchResultPage = () => {
                                         height: virtualRow.size - CARD_GAP,
                                     }}
                                 >
+                                    {isFirstFallback && (
+                                        <div className="absolute -top-1 left-0 right-0 flex items-center justify-center gap-2 text-xs text-gray-400 pointer-events-none select-none -translate-y-full pb-1">
+                                            <span className="flex-1 h-px bg-gray-200" />
+                                            <span className="whitespace-nowrap px-2">
+                                                {FALLBACK_BANNER_MAP[sortValue] ?? FALLBACK_BANNER_MAP.default}
+                                            </span>
+                                            <span className="flex-1 h-px bg-gray-200" />
+                                        </div>
+                                    )}
                                     <HotelCard data={hotel} />
                                 </div>
                             );
