@@ -36,9 +36,11 @@ const SYSTEM_PROMPT = `你是 Easu 酒店预订平台的智能助手，名字叫
 - 用户未明确预算时，使用宽泛默认价格区间：minPrice=200，maxPrice=3000。
 - 当需要更宽泛兜底时，可将 maxPrice 放宽到 5000，确保能返回结果。
 3. 先给结果，再引导：
-- 永远先提供具体酒店推荐（简要说明推荐理由）。
+- 永远先提供具体酒店推荐（简要说明推荐理由），控制字数在 50 字以内。
+- 至少推荐2个酒店，不要只推荐一个。
+- 由于前端会自动渲染精美的酒店卡片，你的回复必须极度简短（控制在 50 字以内），只需概括推荐理由即可。
 - 在回复结尾补一句：如果您有具体预算或位置偏好，我可以为您更精准地筛选。
-- 由于前端会自动渲染精美的酒店卡片，你的回复必须极度简短（控制在 50 字以内），只需概括推荐理由即可
+
 4. 场景化联想：
 - 识别用户场景并自动补全偏好关键词，不要求用户显式给出。
 - 关键词按照下面的场景进行分配，如果是在匹配不到至少要包含一个关键词。
@@ -61,7 +63,7 @@ const HOTEL_SEARCH_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: 'function',
     function: {
         name: 'search_hotels',
-        description: `搜索酒店、查询价格与设施。今天是 ${dayjs().format('YYYY-MM-DD')}。当用户提及订房、找酒店、查价格等需求时，必须优先调用此工具。对于相对时间（如明天、下周），必须基于今天推算为准确的 YYYY-MM-DD 日期格式。如果用户没有指定预算，不要猜测，忽略价格字段即可。`,
+        description: `搜索酒店、查询价格与设施标签。今天是 ${dayjs().format('YYYY-MM-DD')}。当用户提及订房、找酒店、查价格等需求时，必须优先调用此工具。对于相对时间（如明天、下周），必须基于今天推算为准确的 YYYY-MM-DD 日期格式。如果用户没有指定预算，不要猜测，忽略价格字段即可。返回的设施标签必须符合下面的场景化联想。`,
         parameters: {
             type: 'object',
             properties: {
@@ -79,7 +81,7 @@ const HOTEL_SEARCH_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
                 },
                 keyword: {
                     type: 'string',
-                    description: '搜索关键词，如酒店名称、地标、商圈等。',
+                    description: '搜索关键词，用于匹配酒店名称、地标或特色标签。【极度重要】：当用户按场景或设施找酒店时（如情侣、亲子、电竞），你必须将需求翻译为以下已知标签中的一个确切词汇填入，绝对不要填入完整的自然语言短语（错误示范："适合情侣"、"带小孩的"）。已知可用标签库：[\'免费WIFI\', \'含早\', \'免费停车\', \'24小时前台\', \'行李寄存\', \'近地铁\', \'健身房\', \'恒温游泳池\', \'SPA\', \'会议室\', \'接机服务\', \'咖啡厅\', \'自助洗衣房\', \'智能客控\', \'机器人送物\', \'情侣主题\', \'带浴缸\', \'全景落地窗\', \'海景/江景\', \'氛围感灯光\', \'隔音极佳\', \'私人影院\', \'儿童乐园\', \'家庭套房\', \'提供婴儿床\', \'亲子活动\', \'高配电脑\', \'千兆光纤\', \'电竞椅\', \'宠物友好\']。',
                 },
                 minPrice: {
                     type: 'number',
@@ -215,7 +217,7 @@ export const postChat = async (req: Request, res: Response) => {
                     hotels: [...searchResult.exactMatches, ...searchResult.recommendations],
                 });
 
-                toolContent = JSON.stringify(searchResult.aiContext.slice(0, 5));
+                toolContent = JSON.stringify(searchResult.aiContext.slice(0, 4));
             } catch (toolErr) {
                 console.error('Tool execution failed:', toolErr);
                 toolContent = JSON.stringify({ error: '查询失败或参数错误，请告诉用户系统遇到了问题。' });
