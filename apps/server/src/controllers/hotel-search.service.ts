@@ -254,9 +254,9 @@ OFFSET $10::int
 }
 
 /**
- * 全局兜底查询 (3 params，无城市约束):
+ * 全局兜底查询 (4 params，带可选城市约束):
  * 当精确查询和降级查询均无结果时，返回热门酒店。
- * $1 = keyword, $2 = limit, $3 = offset
+ * $1 = keyword, $2 = limit, $3 = offset, $4 = city
  */
 function buildGlobalFallbackQuery(sort: string): string {
     const orderBy = getOrderByClause(sort);
@@ -285,6 +285,7 @@ SELECT
 FROM "Hotel" h
 LEFT JOIN hotel_min_prices hmp ON hmp.hotel_id = h.id
 WHERE h.status = 1
+    AND ($4::text = '' OR h.city = $4::text)
 ORDER BY ${orderBy}
 LIMIT $2::int
 OFFSET $3::int
@@ -387,6 +388,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 pKeyword,           // $1
                 limit,              // $2
                 cursor,             // $3
+                pCity,              // $4
             );
         } catch (err) {
             console.error('Global fallback query failed:', err);

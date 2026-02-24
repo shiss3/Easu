@@ -159,12 +159,9 @@ const AIAssistantPage = () => {
                             <div className="max-w-[90%] space-y-2">
                                 <ReasoningBlock reasoning={msg.reasoning} />
                                 {msg.toolStatus && <ToolStatusBubble text={msg.toolStatus} />}
-                                {msg.hotels && msg.hotels.length > 0 && (
-                                    <HotelCardList hotels={msg.hotels} onNavigate={id => navigate(`/hotel/${id}`)} />
-                                )}
                                 {msg.content && (
                                     <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm text-sm text-slate-800 whitespace-pre-wrap shadow-sm leading-relaxed">
-                                        {msg.content}
+                                        {renderInterlacedContent(msg.content, msg.hotels, navigate)}
                                     </div>
                                 )}
                                 {!msg.content && !msg.toolStatus && !msg.hotels?.length && !msg.reasoning && (
@@ -257,47 +254,71 @@ function ToolStatusBubble({ text }: { text: string }) {
     );
 }
 
-function HotelCardList({ hotels, onNavigate }: { hotels: HotelVo[]; onNavigate: (id: number) => void }) {
+function InlineHotelCard({ hotel, onNavigate }: { hotel: HotelVo; onNavigate: () => void }) {
     return (
-        <div className="flex overflow-x-auto gap-3 pb-2 snap-x scrollbar-none -mx-1 px-1">
-            {hotels.map(hotel => (
-                <div
-                    key={hotel.id}
-                    className="snap-start shrink-0 w-52 bg-white rounded-xl shadow-md overflow-hidden active:scale-[0.98] transition-transform cursor-pointer"
-                    onClick={() => onNavigate(hotel.id)}
-                >
-                    <img
-                        src={hotel.coverImage || 'https://placehold.co/208x128?text=Hotel'}
-                        alt={hotel.name}
-                        className="w-full h-28 object-cover"
-                        loading="lazy"
-                    />
-                    <div className="p-2.5">
-                        <h3 className="text-sm font-semibold text-slate-800 truncate">{hotel.name}</h3>
-                        {hotel.tags?.length > 0 && (
-                            <div className="flex gap-1 mt-1 overflow-hidden">
-                                {hotel.tags.slice(0, 2).map(tag => (
-                                    <span key={tag} className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex items-center justify-between mt-2">
-                            <div className="flex items-center gap-0.5 text-amber-500">
-                                <Star size={12} fill="currentColor" />
-                                <span className="text-xs font-medium">{hotel.score}</span>
-                            </div>
-                            <span className="text-red-500 font-bold text-sm">
-                                ¥{hotel.minPrice / 100}
-                                <span className="text-[10px] font-normal ml-0.5">起</span>
-                            </span>
-                        </div>
+        <div
+            onClick={onNavigate}
+            className="flex gap-3 my-2 bg-white border border-slate-100 p-2.5 rounded-xl shadow-sm cursor-pointer active:scale-[0.98] transition-transform w-full max-w-sm"
+        >
+            <img
+                src={hotel.coverImage || 'https://placehold.co/208x128?text=Hotel'}
+                alt={hotel.name}
+                className="w-24 h-24 object-cover rounded-lg shrink-0"
+                loading="lazy"
+            />
+            <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                <div>
+                    <h3 className="font-bold text-slate-800 text-sm truncate">{hotel.name}</h3>
+                    <div className="flex items-center gap-1 mt-1">
+                        <Star size={12} className="text-amber-500 fill-amber-500" />
+                        <span className="text-xs font-medium text-amber-500">{hotel.score}</span>
                     </div>
                 </div>
-            ))}
+                <div className="flex justify-between items-end mt-2">
+                    <div className="flex gap-1 overflow-hidden max-w-[60%]">
+                        {hotel.tags?.slice(0, 2).map(tag => (
+                            <span key={tag} className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded truncate">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                    <div className="text-red-500 font-bold text-sm">
+                        ¥{hotel.minPrice / 100}<span className="text-[10px] font-normal ml-0.5">起</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
+}
+
+function renderInterlacedContent(
+    content: string,
+    hotels?: HotelVo[],
+    navigate?: (path: string) => void,
+): React.ReactNode {
+    if (!hotels || hotels.length === 0) return content;
+
+    const displayContent = content.replace(/\[[^\]]*$/, '');
+    const parts = displayContent.split(/(\[HOTEL_CARD_\d+\])/g);
+
+    return parts.map((part, index) => {
+        const match = part.match(/\[HOTEL_CARD_(\d+)\]/);
+        if (match) {
+            const hotelId = Number(match[1]);
+            const hotel = hotels.find(h => h.id === hotelId);
+            if (hotel) {
+                return (
+                    <InlineHotelCard
+                        key={`card-${index}`}
+                        hotel={hotel}
+                        onNavigate={() => navigate?.(`/hotel/${hotel.id}`)}
+                    />
+                );
+            }
+            return null;
+        }
+        return part ? <span key={`text-${index}`}>{part}</span> : null;
+    });
 }
 
 export default AIAssistantPage;

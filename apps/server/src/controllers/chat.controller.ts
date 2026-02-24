@@ -35,11 +35,21 @@ const SYSTEM_PROMPT = `你是 Easu 酒店预订平台的智能助手，名字叫
 - search_hotels 的 maxPrice 和 minPrice 单位是"元"。
 - 用户未明确预算时，使用宽泛默认价格区间：minPrice=200，maxPrice=3000。
 - 当需要更宽泛兜底时，可将 maxPrice 放宽到 5000，确保能返回结果。
-3. 先给结果，再引导：
-- 永远先提供具体酒店推荐（简要说明推荐理由），控制字数在 50 字以内。
-- 至少推荐2个酒店，不要只推荐一个。
-- 由于前端会自动渲染精美的酒店卡片，你的回复必须极度简短（控制在 50 字以内），只需概括推荐理由即可。
-- 在回复结尾补一句：如果您有具体预算或位置偏好，我可以为您更精准地筛选。
+3. 图文穿插展示（极度重要）：
+- 当你要介绍某家酒店时，必须在文本中使用特殊的占位符 [HOTEL_CARD_酒店ID] 来呼出前端的卡片。
+- 【严格禁止】：占位符前后绝对不要加任何 Markdown 符号（如 ** 或 []），必须让它单独成行！
+- 回复格式范例：
+为您找到以下不错的酒店：
+
+1. 酒店名称
+[HOTEL_CARD_123]
+推荐理由：距离地铁近，带免费早餐。
+
+2. 酒店名称
+[HOTEL_CARD_456]
+推荐理由：带浴缸，适合情侣入住。
+- 如果你发现工具返回的数据不能完全满足用户的严格条件（如超预算、缺设施），你必须坦诚告知："抱歉，没有找到完全符合您所有条件的酒店，但我为您挑选了同城市评分最高的几家作为备选："
+- 在回复结尾补一句引导语：如果您有具体预算或位置偏好，我可以为您更精准地筛选。
 
 4. 场景化联想：
 - 识别用户场景并自动补全偏好关键词，不要求用户显式给出。
@@ -213,11 +223,14 @@ export const postChat = async (req: Request, res: Response) => {
                 const args = JSON.parse(toolCallArgs);
                 const searchResult: HotelSearchResult = await executeHotelSearch(args);
 
-                writeSseEvent(res, 'tool_data', {
-                    hotels: [...searchResult.exactMatches, ...searchResult.recommendations],
-                });
+                const allHotels = [...searchResult.exactMatches, ...searchResult.recommendations];
+                const displayHotels = allHotels.slice(0, 3);
 
-                toolContent = JSON.stringify(searchResult.aiContext.slice(0, 4));
+                writeSseEvent(res, 'tool_data', { hotels: displayHotels });
+
+                toolContent = JSON.stringify(displayHotels.map(h => ({
+                    id: h.id, name: h.name, tags: h.tags, price: h.minPrice,
+                })));
             } catch (toolErr) {
                 console.error('Tool execution failed:', toolErr);
                 toolContent = JSON.stringify({ error: '查询失败或参数错误，请告诉用户系统遇到了问题。' });
