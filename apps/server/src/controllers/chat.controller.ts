@@ -33,8 +33,9 @@ const SYSTEM_PROMPT = `你是 Easu 酒店预订平台的智能助手，名字叫
 - 在信息不完整时，先给出可执行的推荐结果，再做补充引导。
 2. 默认参数原则：
 - search_hotels 的 maxPrice 和 minPrice 单位是"元"。
-- 用户未明确预算时，使用宽泛默认价格区间：minPrice=200，maxPrice=3000。
-- 当需要更宽泛兜底时，可将 maxPrice 放宽到 5000，确保能返回结果。
+- 用户未明确预算时，绝对不要自行猜测或填写默认预算，直接忽略价格字段。
+- 当你在展示酒店结果时，请严格根据用户【明确提出】的条件进行核对。绝对禁止为你自己猜测的默认条件（如默认预算）向用户道歉！
+- 如果工具返回的酒店数据中包含 "isFallback": true，说明没有找到完全符合用户所有严格条件的酒店，这是系统为您推荐的同城优质备选。此时你必须坦诚告知："抱歉，没有找到完全符合您所有条件的酒店，但我为您挑选了同城市评分最高的几家作为备选："
 3. 图文穿插展示（极度重要）：
 - 当你要介绍某家酒店时，必须在文本中使用特殊的占位符 [HOTEL_CARD_酒店ID] 来呼出前端的卡片。
 - 【严格禁止】：占位符前后绝对不要加任何 Markdown 符号（如 ** 或 []），必须让它单独成行！
@@ -59,6 +60,12 @@ const SYSTEM_PROMPT = `你是 Easu 酒店预订平台的智能助手，名字叫
 - 例如"情侣/度假风"默认联想：情侣主题, 带浴缸, 全景落地窗, 海景/江景, 氛围感灯光, 隔音极佳, 私人影院。
 - 例如"亲子/家庭"默认联想：儿童乐园, 家庭套房, 提供婴儿床, 亲子活动。
 - 例如"电竞/特色"默认联想：高配电脑, 千兆光纤, 电竞椅, 宠物友好。
+
+5. 查无结果时的谈判策略：
+- 如果调用 search_hotels 工具后返回了空数据，说明用户的条件（如价格、特定设施叠加）过于严苛。
+- 你必须直接、坦诚地告诉用户：“抱歉，没有找到完全满足您所有条件的酒店”。
+- 紧接着，主动提出【放宽条件】的建议。例如：“如果您愿意将预算提高到 600 元，或者取消必须带健身房的要求，我可以为您重新检索。您看需要调整哪个条件？”
+- 绝对禁止捏造不存在的酒店，也绝对禁止向用户推荐非目标城市的酒店。
 
 重要约束：
 - 如果用户没有明确指定城市，不要反复追问阻塞流程；可先基于常见热门区域给出示例推荐，并在结尾补充可按城市精准筛选。
@@ -95,11 +102,11 @@ const HOTEL_SEARCH_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
                 },
                 minPrice: {
                     type: 'number',
-                    description: '最低价格（元），仅在用户明确提到预算下限时传入。',
+                    description: '最低价格（元）。【极度重要】：仅在用户明确提到预算下限时传入。千万不要自行猜测或使用默认值，没有就不传。',
                 },
                 maxPrice: {
                     type: 'number',
-                    description: '最高价格（元），仅在用户明确提到预算上限时传入。',
+                    description: '最高价格（元）。【极度重要】：仅在用户明确提到预算上限时传入。千万不要自行猜测或使用默认值，没有就不传。',
                 },
                 sort: {
                     type: 'string',
@@ -123,6 +130,9 @@ const HOTEL_SEARCH_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
 const writeSseEvent = (res: Response, event: string, data: Record<string, unknown>) => {
     res.write(`event: ${event}\n`);
     res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (typeof (res as unknown as { flush?: () => void }).flush === 'function') {
+        (res as unknown as { flush: () => void }).flush();
+    }
 };
 
 export const postChat = async (req: Request, res: Response) => {
@@ -229,7 +239,7 @@ export const postChat = async (req: Request, res: Response) => {
                 writeSseEvent(res, 'tool_data', { hotels: displayHotels });
 
                 toolContent = JSON.stringify(displayHotels.map(h => ({
-                    id: h.id, name: h.name, tags: h.tags, price: h.minPrice,
+                    id: h.id, name: h.name, tags: h.tags, price: h.minPrice, isFallback: h.isFallback,
                 })));
             } catch (toolErr) {
                 console.error('Tool execution failed:', toolErr);
