@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@radix-ui/react-slot": "^1.2.4",
     "@repo/utils": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
