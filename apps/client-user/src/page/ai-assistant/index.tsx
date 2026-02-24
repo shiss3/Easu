@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Send from 'lucide-react/dist/esm/icons/send';
@@ -30,11 +30,14 @@ const WELCOME_MESSAGE: ChatMessage = {
 
 const AIAssistantPage = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const location = useLocation();
     const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
     const [inputValue, setInputValue] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const autoSentRef = useRef(false);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,8 +47,9 @@ const AIAssistantPage = () => {
         return () => { abortControllerRef.current?.abort(); };
     }, []);
 
-    const sendMessage = useCallback(async () => {
-        const text = inputValue.trim();
+    const sendMessage = useCallback(async (payload?: string | React.SyntheticEvent) => {
+        // 判断传入的是否是真正的字符串，否则使用输入框的值
+        const text = (typeof payload === 'string' ? payload : inputValue).trim();
         if (!text || isGenerating) return;
 
         const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text };
@@ -123,6 +127,23 @@ const AIAssistantPage = () => {
         }
     }, [inputValue, isGenerating, messages]);
 
+    useEffect(() => {
+        const promptFromUrl = searchParams.get('prompt');
+        // 如果有 prompt 并且还没有发送过
+        if (promptFromUrl && !autoSentRef.current) {
+            // 使用 setTimeout 延迟 50ms 发送
+            // 如果是 Strict Mode 的第一次虚拟挂载，组件会立即卸载并 clearTimeout，从而阻止多余的请求。
+            // 只有第二次真实的挂载，才会安稳地活过 50ms 并执行发送。
+            const timer = setTimeout(() => {
+                autoSentRef.current = true;
+                sendMessage(promptFromUrl);
+                navigate(location.pathname, { replace: true });
+            }, 50);
+
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams, location.pathname, navigate, sendMessage]);
+
     const handleStop = useCallback(() => {
         abortControllerRef.current?.abort();
         setIsGenerating(false);
@@ -185,7 +206,7 @@ const AIAssistantPage = () => {
                 <div className="flex gap-3 mb-3 overflow-x-auto px-1">
                     <div className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full text-xs font-medium border border-blue-100/50">
                         <Brain size={14} />
-                        <span>深度思考(R1)</span>
+                        <span>深度思考</span>
                     </div>
                 </div>
                 <div className="relative flex items-center gap-2">
@@ -206,7 +227,7 @@ const AIAssistantPage = () => {
                         </button>
                     ) : (
                         <button
-                            onClick={sendMessage}
+                            onClick={() => sendMessage()}
                             disabled={!inputValue.trim()}
                             className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm disabled:opacity-40 active:scale-95 transition-transform"
                         >
@@ -299,10 +320,10 @@ function renderInterlacedContent(
     if (!hotels || hotels.length === 0) return content;
 
     const displayContent = content.replace(/\[[^\]]*$/, '');
-    const parts = displayContent.split(/(\[HOTEL_CARD_\d+\])/g);
+    const parts = displayContent.split(/(\[HOTEL_CARD_\d+])/g);
 
     return parts.map((part, index) => {
-        const match = part.match(/\[HOTEL_CARD_(\d+)\]/);
+        const match = part.match(/\[HOTEL_CARD_(\d+)]/);
         if (match) {
             const hotelId = Number(match[1]);
             const hotel = hotels.find(h => h.id === hotelId);

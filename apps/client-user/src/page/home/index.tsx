@@ -17,6 +17,7 @@ const CitySelector = lazy(() => import('@/components/Home/CitySelector'));
 const PriceStarSelector = lazy(() => import('@/components/Home/PriceStarSelector'));
 
 const DATE_FORMAT = 'YYYY-MM-DD';
+const QUICK_TAGS = ['近地铁', '免费停车', '行李寄存', '情侣主题', '儿童乐园', '电竞椅'];
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -91,7 +92,8 @@ const HomePage = () => {
         await trigger();
     };
 
-    const handleSearch = () => {
+    const handleSearch = (directKeyword?: string | React.SyntheticEvent) => {
+        const finalKeyword = typeof directKeyword === 'string' ? directKeyword : keyword;
         const params = new URLSearchParams();
         params.set('city', city);
         params.set('start', dateRange.start);
@@ -110,8 +112,8 @@ const HomePage = () => {
         if (filters.stars?.length) {
             params.set('stars', filters.stars.join(','));
         }
-        if (keyword) {
-            params.set('keyword', keyword);
+        if (finalKeyword) {
+            params.set('keyword', finalKeyword);
         }
         navigate(`/search?${params.toString()}`);
     };
@@ -271,6 +273,20 @@ const HomePage = () => {
                             <GuestSelector onPriceStarClick={() => setShowPriceSelector(true)} />
                         </div>
                     ) : null}
+
+                    {/* 快捷标签 */}
+                    <div className="flex gap-3 overflow-x-auto py-2 mt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        {QUICK_TAGS.map((tag) => (
+                            <button
+                                key={tag}
+                                type="button"
+                                onClick={() => { setKeyword(tag); handleSearch(tag); }}
+                                className="px-4 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-full whitespace-nowrap hover:bg-gray-200 active:bg-gray-200 transition-colors"
+                            >
+                                {tag}
+                            </button>
+                        ))}
+                    </div>
 
                     {/* 查询按钮 */}
                     <Button
