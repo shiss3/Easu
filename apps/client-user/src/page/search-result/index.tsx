@@ -181,10 +181,11 @@ const SearchResultPage = () => {
         checkOut: endRaw || undefined,
         guestCount: totalPersons,
         rooms: guest.rooms,
+        keyword: keywordFromUrl || undefined,
         minPrice: filters.minPrice ?? undefined,
         maxPrice: filters.maxPrice ?? undefined,
         sort: sortValue !== 'default' ? sortValue : undefined,
-    }), [city, startRaw, endRaw, totalPersons, guest.rooms, filters.minPrice, filters.maxPrice, sortValue]);
+    }), [city, startRaw, endRaw, totalPersons, guest.rooms, keywordFromUrl, filters.minPrice, filters.maxPrice, sortValue]);
 
     const {
         allHotels,

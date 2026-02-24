@@ -249,11 +249,14 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
     const setCity = useSearchStore((state) => state.setCity);
     const setCoords = useSearchStore((state) => state.setCoords);
     const setStoreKeyword = useSearchStore((state) => state.setKeyword);
+    const storeCity = useSearchStore((state) => state.city);
+    const storeDateRange = useSearchStore((state) => state.dateRange);
     const { data: citiesData, isLoading: citiesLoading } = useCityList();
 
     const [keyword, setKeyword] = useState('');
     const debouncedKeyword = useDebouncedValue(keyword);
     const [aiSearch, setAiSearch] = useState(false);
+    const [inputError, setInputError] = useState(false);
     const [history, setHistory] = useState<string[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -358,6 +361,25 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
         setHistory([]);
     };
 
+    const handleExecuteSearch = useCallback(() => {
+        if (!keywordText) {
+            setInputError(true);
+            setTimeout(() => setInputError(false), 500);
+            return;
+        }
+
+        if (aiSearch) {
+            const prompt = `我想在${storeCity}找酒店，入住时间是${storeDateRange.start}到${storeDateRange.end}。我的额外要求是：${keywordText}。请帮我推荐合适的酒店。`;
+            const encodedPrompt = encodeURIComponent(prompt);
+            setKeyword('');
+            onClose();
+            navigate('/ai-assistant?prompt=' + encodedPrompt);
+            return;
+        }
+
+        handleSelect(keywordText, undefined, 'keyword');
+    }, [keywordText, aiSearch, storeCity, storeDateRange, handleSelect, onClose, navigate]);
+
     const scrollToLetter = (letter: string) => {
         const targetId = letter === '热门' ? 'city-section-hot' : `city-letter-${letter}`;
         const target = document.getElementById(targetId);
@@ -387,7 +409,14 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
                 </div>
 
                 <div className="px-4 pb-2">
-                    <div className="bg-white rounded-2xl px-3 py-3 shadow-sm border border-gray-300">
+                    <div className={cn(
+                        'rounded-2xl px-3 py-3 shadow-sm border transition-all duration-300',
+                        inputError
+                            ? 'bg-white border-red-500 ring-1 ring-red-500'
+                            : aiSearch
+                                ? 'bg-blue-50/50 border-blue-400 shadow-blue-100'
+                                : 'bg-white border-gray-300',
+                    )}>
                         <div className="flex items-center gap-1">
                             <button
                                 type="button"
@@ -401,6 +430,7 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
                                     type="text"
                                     value={keyword}
                                     onChange={(event) => setKeyword(event.target.value)}
+                                    onKeyDown={(event) => { if (event.key === 'Enter') handleExecuteSearch(); }}
                                     placeholder="城市/品牌/酒店/酒店设施"
                                     className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400 pr-6"
                                 />
@@ -442,7 +472,7 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
                             </button>
                             <button
                                 type="button"
-                                onClick={() => handleSelect(keywordText, undefined, 'keyword')}
+                                onClick={handleExecuteSearch}
                                 className="shrink-0 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-base font-semibold px-7 py-2 rounded-full active:opacity-90 transition-opacity shadow-md shadow-blue-200/50"
                             >
                                 搜索
