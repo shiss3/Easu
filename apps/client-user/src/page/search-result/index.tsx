@@ -92,6 +92,35 @@ function getDateHint(dateStr: string): string {
 const CARD_HEIGHT = 156; // h-36 = 9rem = 144px + 12px gap
 const CARD_GAP = 12;
 
+const HotelCardSkeleton = () => (
+    <div className="flex bg-white rounded-lg overflow-hidden shadow-sm animate-pulse" style={{ height: CARD_HEIGHT - CARD_GAP }}>
+        <div className="w-1/3 bg-gray-200" />
+        <div className="w-2/3 p-3 flex flex-col justify-between">
+            <div>
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="flex gap-0.5 mt-1.5">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="w-3 h-3 bg-gray-200 rounded-full" />
+                    ))}
+                </div>
+                <div className="flex items-center gap-2 mt-1.5">
+                    <div className="h-4 bg-gray-200 rounded w-12" />
+                    <div className="h-3 bg-gray-200 rounded w-10" />
+                </div>
+                <div className="h-3 bg-gray-200 rounded w-full mt-1.5" />
+                <div className="flex gap-1 mt-2">
+                    <div className="h-4 bg-gray-200 rounded w-10" />
+                    <div className="h-4 bg-gray-200 rounded w-10" />
+                    <div className="h-4 bg-gray-200 rounded w-10" />
+                </div>
+            </div>
+            <div className="flex justify-end">
+                <div className="h-6 bg-gray-200 rounded w-16" />
+            </div>
+        </div>
+    </div>
+);
+
 const SearchResultPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -628,9 +657,10 @@ const SearchResultPage = () => {
             {/* 虚拟化酒店列表 */}
             <div ref={scrollContainerRef} className="flex-1 overflow-auto">
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-20 text-gray-400">
-                        <Loader2 size={24} className="animate-spin mr-2" />
-                        加载中...
+                    <div className="px-3 pt-3 flex flex-col gap-3">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <HotelCardSkeleton key={i} />
+                        ))}
                     </div>
                 ) : isError ? (
                     <div className="text-center py-10 text-red-400">加载失败，请重试</div>
@@ -647,14 +677,13 @@ const SearchResultPage = () => {
                                 return (
                                     <div
                                         key="loader"
-                                        className="absolute left-3 right-3 flex items-center justify-center py-4 text-gray-400"
+                                        className="absolute left-3 right-3"
                                         style={{
                                             top: virtualRow.start,
-                                            height: virtualRow.size,
+                                            height: virtualRow.size - CARD_GAP,
                                         }}
                                     >
-                                        <Loader2 size={20} className="animate-spin mr-2" />
-                                        加载更多...
+                                        <HotelCardSkeleton />
                                     </div>
                                 );
                             }
