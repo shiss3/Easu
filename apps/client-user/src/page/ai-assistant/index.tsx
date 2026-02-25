@@ -363,7 +363,7 @@ function InlineHotelCard({ hotel, onNavigate }: { hotel: HotelVo; onNavigate: ()
                         ))}
                     </div>
                     <div className="text-red-500 font-bold text-sm">
-                        ¥{hotel.minPrice / 100}<span className="text-[10px] font-normal ml-0.5">起</span>
+                        ¥{hotel.minPrice}<span className="text-[10px] font-normal ml-0.5">起</span>
                     </div>
                 </div>
             </div>

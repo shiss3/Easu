@@ -31,6 +31,7 @@ export interface HotelVo {
     tags: string[];
     minPrice: number;
     isFallback?: boolean;
+    soldOut?: boolean;
 }
 
 export interface SearchResponse {

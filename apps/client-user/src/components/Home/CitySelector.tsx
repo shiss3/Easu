@@ -143,7 +143,7 @@ const SuggestionHotelItem = ({
     onNavigate: (id: number) => void;
 }) => {
     const highlighted = highlightMatch(item.name, keyword);
-    const priceYuan = item.minPrice ? Math.round(item.minPrice / 100) : null;
+    const priceYuan = item.minPrice ? Math.round(item.minPrice) : null;
 
     return (
         <button

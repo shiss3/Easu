@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { searchHotels } from '../controllers/hotel-search.controller';
 import {getHotelDetail} from "../controllers/hotel-detail.controller";
+import { bookRoom } from '../controllers/booking.controller';
 import { getBanners } from '../controllers/home.controller';
 import { getHolidayList } from '../controllers/calendar.controller';
 import { getRegeoLocation } from '../controllers/location.controller';
@@ -19,6 +20,8 @@ router.get('/search/suggestions', getSearchSuggestions);
 
 //定义路由：GET /hotel/:id
 router.get('/hotel/:id', getHotelDetail);
+// 预订房型：POST /room/:roomTypeId/book
+router.post('/room/:roomTypeId/book', bookRoom);
 
 // 首页 Banner：GET /home/banners
 router.get('/home/banners', getBanners);

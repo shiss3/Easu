@@ -70,6 +70,7 @@ interface RawHotelRow {
     sort_order: number;
     min_price: number;
     relevance_score: number;
+    sold_out?: boolean;
 }
 
 // ── Return Types ────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ interface HotelVo {
     reviewCount: number;
     minPrice: number;
     isFallback: boolean;
+    soldOut: boolean;
 }
 
 interface AiContextItem {
@@ -203,13 +205,14 @@ OFFSET $13::int
 }
 
 /**
- * 兜底降级查询 (12 params，不检查库存):
+ * 兜底降级查询 (14 params，不检查库存):
  * 使用 LEFT JOIN 保证即使没有房型的酒店也能被查出来。
  * $1 = city, $2 = keyword, $3 = guestCount,
  * $4 = minPrice, $5 = maxPrice,
  * $6 = hasWindow, $7 = hasBreakfast, $8 = childrenFriendly,
  * $9 = limit, $10 = offset,
- * $11 = tags, $12 = stars
+ * $11 = tags, $12 = stars,
+ * $13 = checkInDate (nullable), $14 = checkOutDate (nullable)
  */
 function buildFallbackQuery(sort: string, isHourly: boolean = false): string {
     const orderBy = getOrderByClause(sort);
@@ -227,6 +230,18 @@ WITH hotel_room_info AS (
         BOOL_OR(rt."childrenFriendly") AS any_children
     FROM "RoomType" rt
     GROUP BY rt."hotelId"
+),
+inventory_price AS (
+    SELECT
+        rt2."hotelId" AS hotel_id,
+        MIN(COALESCE(ri.price, rt2.price)) AS inv_min_price,
+        BOOL_AND(ri.quota < 1) AS all_sold_out
+    FROM "RoomType" rt2
+    INNER JOIN "RoomInventory" ri ON ri."roomTypeId" = rt2.id
+    WHERE $13::timestamp IS NOT NULL
+        AND ri.date >= $13::timestamp
+        AND ri.date < $14::timestamp
+    GROUP BY rt2."hotelId"
 )
 SELECT
     h.id,
@@ -241,7 +256,7 @@ SELECT
     h.star,
     h."reviewCount" AS review_count,
     h."sortOrder" AS sort_order,
-    COALESCE(hri.min_price, 0) AS min_price,
+    COALESCE(ip.inv_min_price, hri.min_price, 0) AS min_price,
     (
         CASE WHEN $6::boolean AND COALESCE(hri.any_window, false) THEN 20 ELSE 0 END
         + CASE WHEN $7::boolean AND COALESCE(hri.any_breakfast, false) THEN 15 ELSE 0 END
@@ -249,16 +264,18 @@ SELECT
         + CASE WHEN LENGTH($2::text) > 0 THEN
             (word_similarity(h.name, $2::text) * 30)::int
           ELSE 0 END
-    ) AS relevance_score
+    ) AS relevance_score,
+    CASE WHEN $13::timestamp IS NOT NULL THEN COALESCE(ip.all_sold_out, true) ELSE false END AS sold_out
 FROM "Hotel" h
 LEFT JOIN hotel_room_info hri ON hri.hotel_id = h.id
+LEFT JOIN inventory_price ip ON ip.hotel_id = h.id
 WHERE
     h.status = 1
     AND ($1::text = '' OR h.city ILIKE '%' || $1::text || '%')
     AND ($2::text = '' OR h.name ILIKE '%' || $2::text || '%' OR h.city ILIKE '%' || $2::text || '%' OR array_to_string(h.tags, ',') ILIKE '%' || $2::text || '%')
     AND (
         ($4::int = 0 AND $5::int >= ${PG_INT4_MAX})
-        OR (COALESCE(hri.min_price, 0) BETWEEN $4::int AND $5::int)
+        OR (COALESCE(ip.inv_min_price, hri.min_price, 0) BETWEEN $4::int AND $5::int)
     )
     AND ($3::int <= 1 OR COALESCE(hri.max_capacity, 99) >= $3::int)
     AND (${hourlyTagFilter})
@@ -408,6 +425,8 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 cursor,             // $10
                 pTags,              // $11
                 pStars,             // $12
+                checkInDate,        // $13
+                checkOutDate,       // $14
             );
         } catch (err) {
             console.error('Fallback query failed:', err);
@@ -443,6 +462,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
         reviewCount: Number(row.review_count),
         minPrice: Number(row.min_price),
         isFallback,
+        soldOut: isFallback ? Boolean(row.sold_out) : false,
     });
 
     const exactFormatted = exactMatches.map(r => formatRow(r, false));

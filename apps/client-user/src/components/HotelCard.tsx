@@ -7,11 +7,12 @@ export const HotelCard = ({ data }: { data: HotelVo }) => {
 
     const isFeatured = data.tags?.includes('精选') || data.tags?.includes('全国精选');
     const isRecommended = data.score >= 4.8;
+    const soldOut = data.soldOut === true;
 
     return (
         <div
             onClick={() => navigate(`/hotel/${data.id}`)}
-            className="flex bg-white rounded-lg overflow-hidden shadow-sm h-full"
+            className={`flex bg-white rounded-lg overflow-hidden shadow-sm h-full ${soldOut ? 'opacity-50 grayscale' : ''}`}
         >
             <div className="w-1/3 relative">
                 <img
@@ -64,11 +65,15 @@ export const HotelCard = ({ data }: { data: HotelVo }) => {
                     </div>
                 </div>
                 <div className="flex justify-end items-end gap-1">
-                    <div className="text-red-500">
-                        <span className="text-xs">¥</span>
-                        <span className="text-xl font-bold">{data.minPrice / 100}</span>
-                        <span className="text-xs text-gray-400 ml-1">起</span>
-                    </div>
+                    {soldOut ? (
+                        <span className="text-sm text-red-500 font-bold">已订完</span>
+                    ) : (
+                        <div className="text-red-500">
+                            <span className="text-xs">¥</span>
+                            <span className="text-xl font-bold">{data.minPrice / 100}</span>
+                            <span className="text-xs text-gray-400 ml-1">起</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
