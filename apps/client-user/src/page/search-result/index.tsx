@@ -178,6 +178,22 @@ const SearchResultPage = () => {
     // --- Filters from store ---
     const filters = useSearchStore((s) => s.filters);
 
+    const parsedStars = useMemo(() => {
+        if (!filters.stars || filters.stars.length === 0) return undefined;
+        const starSet = new Set<number>();
+
+        if (filters.stars.includes('2')) {
+            starSet.add(0).add(1).add(2);
+        }
+        if (filters.stars.includes('3')) {
+            starSet.add(3);
+        }
+        if (filters.stars.includes('4')) {
+            starSet.add(4).add(5);
+        }
+        return Array.from(starSet);
+    }, [filters.stars]);
+
     // --- Infinite Query ---
     const searchQueryParams = useMemo(() => ({
         city,
@@ -188,10 +204,11 @@ const SearchResultPage = () => {
         keyword: keywordFromUrl || undefined,
         minPrice: filters.minPrice ?? undefined,
         maxPrice: filters.maxPrice ?? undefined,
+        stars: parsedStars,
         sort: sortValue !== 'default' ? sortValue : undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         searchType,
-    }), [city, startRaw, endRaw, totalPersons, guest.rooms, keywordFromUrl, filters.minPrice, filters.maxPrice, sortValue, selectedTags, searchType]);
+    }), [city, startRaw, endRaw, totalPersons, guest.rooms, keywordFromUrl, filters.minPrice, filters.maxPrice, parsedStars, sortValue, selectedTags, searchType]);
 
     const {
         allHotels,

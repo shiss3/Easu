@@ -14,6 +14,7 @@ export interface HotelSearchParams {
     maxPrice?: number;
     sort?: string;
     tags?: string[];
+    stars?: number[];
     searchType?: 'hotel' | 'hourly';
     cursor?: number;
     limit?: number;

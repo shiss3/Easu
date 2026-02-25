@@ -18,6 +18,7 @@ const searchSchema = z.object({
     maxPrice: z.number().int().min(0).optional().nullable(),
     sort: z.enum(['default', 'rating', 'price_low', 'price_high']).optional(),
     tags: z.array(z.string()).optional(),
+    stars: z.array(z.number().int()).optional().nullable(),
     searchType: z.enum(['hotel', 'hourly']).optional(),
     cursor: z.number().int().min(0).optional(),
     limit: z.number().int().min(1).max(50).optional(),
@@ -115,12 +116,13 @@ export class SearchValidationError extends Error {
 // ── SQL Builders ────────────────────────────────────────────────────────
 
 /**
- * 硬约束完整查询 (15 params):
+ * 硬约束完整查询 (16 params):
  * $1 = checkInDate, $2 = checkOutDate, $3 = rooms, $4 = guestCount,
  * $5 = city, $6 = keyword,
  * $7 = hasWindow, $8 = hasBreakfast, $9 = childrenFriendly,
  * $10 = minPrice, $11 = maxPrice,
- * $12 = limit, $13 = offset, $14 = nightCount, $15 = tags
+ * $12 = limit, $13 = offset, $14 = nightCount,
+ * $15 = tags, $16 = stars
  */
 function buildExactQuery(sort: string): string {
     const orderBy = getOrderByClause(sort);
@@ -190,6 +192,7 @@ WHERE
         OR (hmp.min_price BETWEEN $10::int AND $11::int)
     )
     AND ($15::text[] IS NULL OR h.tags @> $15::text[])
+    AND ($16::int[] IS NULL OR h.star = ANY($16::int[]))
 ORDER BY ${orderBy}
 LIMIT $12::int
 OFFSET $13::int
@@ -197,12 +200,13 @@ OFFSET $13::int
 }
 
 /**
- * 兜底降级查询 (11 params，不检查库存):
+ * 兜底降级查询 (12 params，不检查库存):
  * 使用 LEFT JOIN 保证即使没有房型的酒店也能被查出来。
  * $1 = city, $2 = keyword, $3 = guestCount,
  * $4 = minPrice, $5 = maxPrice,
  * $6 = hasWindow, $7 = hasBreakfast, $8 = childrenFriendly,
- * $9 = limit, $10 = offset, $11 = tags
+ * $9 = limit, $10 = offset,
+ * $11 = tags, $12 = stars
  */
 function buildFallbackQuery(sort: string, isHourly: boolean = false): string {
     const orderBy = getOrderByClause(sort);
@@ -255,6 +259,7 @@ WHERE
     AND ($3::int <= 1 OR COALESCE(hri.max_capacity, 99) >= $3::int)
     AND (${hourlyTagFilter})
     AND ($11::text[] IS NULL OR h.tags @> $11::text[])
+    AND ($12::int[] IS NULL OR h.star = ANY($12::int[]))
 ORDER BY ${orderBy}
 LIMIT $9::int
 OFFSET $10::int
@@ -262,9 +267,10 @@ OFFSET $10::int
 }
 
 /**
- * 全局兜底查询 (5 params，带可选城市约束):
+ * 全局兜底查询 (6 params，带可选城市约束):
  * 当精确查询和降级查询均无结果时，返回热门酒店。
- * $1 = keyword, $2 = limit, $3 = offset, $4 = city, $5 = tags
+ * $1 = keyword, $2 = limit, $3 = offset, $4 = city,
+ * $5 = tags, $6 = stars
  */
 function buildGlobalFallbackQuery(sort: string, isHourly: boolean = false): string {
     const orderBy = getOrderByClause(sort);
@@ -299,6 +305,7 @@ WHERE h.status = 1
     AND ($4::text = '' OR h.city = $4::text)
     AND (${hourlyTagFilter})
     AND ($5::text[] IS NULL OR h.tags @> $5::text[])
+    AND ($6::int[] IS NULL OR h.star = ANY($6::int[]))
 ORDER BY ${orderBy}
 LIMIT $2::int
 OFFSET $3::int
@@ -340,6 +347,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
     const pKeyword = (keyword ?? '').trim();
     const pSort = sort ?? 'default';
     const pTags = (parsed.data.tags?.length) ? parsed.data.tags : null;
+    const pStars = (parsed.data.stars?.length) ? parsed.data.stars : null;
     const pSearchType = parsed.data.searchType ?? 'hotel';
     const isHourly = pSearchType === 'hourly';
 
@@ -372,6 +380,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 cursor,             // $13
                 nightCount,         // $14
                 pTags,              // $15
+                pStars,             // $16
             );
         } catch (err) {
             console.error('Exact query failed, falling back:', err);
@@ -393,6 +402,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 limit,              // $9
                 cursor,             // $10
                 pTags,              // $11
+                pStars,             // $12
             );
         } catch (err) {
             console.error('Fallback query failed:', err);
@@ -408,6 +418,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 cursor,             // $3
                 pCity,              // $4
                 pTags,              // $5
+                pStars,             // $6
             );
         } catch (err) {
             console.error('Global fallback query failed:', err);

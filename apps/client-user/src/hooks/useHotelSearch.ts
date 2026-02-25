@@ -20,6 +20,7 @@ export interface UseHotelSearchParams {
     maxPrice?: number;
     sort?: string;
     tags?: string[];
+    stars?: number[];
 }
 
 const PAGE_SIZE = 20;

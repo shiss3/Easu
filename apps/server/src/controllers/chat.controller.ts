@@ -131,6 +131,11 @@ const HOTEL_SEARCH_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
                     type: 'boolean',
                     description: '是否需要含早餐。',
                 },
+                stars: {
+                    type: 'array',
+                    items: { type: 'number' },
+                    description: '星级精确匹配数组。0-2代表经济型/二星及以下，3代表三星，4代表四星，5代表五星。例如用户要求"四星和五星"，则传入 [4, 5]；要求"三星及以下"则传入 [0, 1, 2, 3]。',
+                },
             },
             required: ['city', 'checkIn', 'checkOut'],
         },
