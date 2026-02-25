@@ -106,6 +106,7 @@ const SearchResultPage = () => {
 
     const city = searchParams.get('city') || '上海';
     const keywordFromUrl = searchParams.get('keyword') || '';
+    const searchType = searchParams.get('searchType') === 'hourly' ? 'hourly' as const : 'hotel' as const;
     const latRaw = searchParams.get('lat');
     const lngRaw = searchParams.get('lng');
     const isLocationMode = latRaw !== null && lngRaw !== null;
@@ -185,7 +186,8 @@ const SearchResultPage = () => {
         minPrice: filters.minPrice ?? undefined,
         maxPrice: filters.maxPrice ?? undefined,
         sort: sortValue !== 'default' ? sortValue : undefined,
-    }), [city, startRaw, endRaw, totalPersons, guest.rooms, keywordFromUrl, filters.minPrice, filters.maxPrice, sortValue]);
+        searchType,
+    }), [city, startRaw, endRaw, totalPersons, guest.rooms, keywordFromUrl, filters.minPrice, filters.maxPrice, sortValue, searchType]);
 
     const {
         allHotels,

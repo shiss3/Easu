@@ -13,6 +13,7 @@ export interface HotelSearchParams {
     minPrice?: number;
     maxPrice?: number;
     sort?: string;
+    searchType?: 'hotel' | 'hourly';
     cursor?: number;
     limit?: number;
 }

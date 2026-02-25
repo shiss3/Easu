@@ -17,6 +17,7 @@ const searchSchema = z.object({
     minPrice: z.number().int().min(0).optional().nullable(),
     maxPrice: z.number().int().min(0).optional().nullable(),
     sort: z.enum(['default', 'rating', 'price_low', 'price_high']).optional(),
+    searchType: z.enum(['hotel', 'hourly']).optional(),
     cursor: z.number().int().min(0).optional(),
     limit: z.number().int().min(1).max(50).optional(),
 });
@@ -201,8 +202,11 @@ OFFSET $13::int
  * $6 = hasWindow, $7 = hasBreakfast, $8 = childrenFriendly,
  * $9 = limit, $10 = offset
  */
-function buildFallbackQuery(sort: string): string {
+function buildFallbackQuery(sort: string, isHourly: boolean = false): string {
     const orderBy = getOrderByClause(sort);
+    const hourlyTagFilter = isHourly
+        ? "array_to_string(h.tags, ',') ILIKE '%钟点房%'"
+        : '1=1';
     return `
 WITH hotel_room_info AS (
     SELECT
@@ -247,6 +251,7 @@ WHERE
         OR (COALESCE(hri.min_price, 0) BETWEEN $4::int AND $5::int)
     )
     AND ($3::int <= 1 OR COALESCE(hri.max_capacity, 99) >= $3::int)
+    AND (${hourlyTagFilter})
 ORDER BY ${orderBy}
 LIMIT $9::int
 OFFSET $10::int
@@ -258,8 +263,11 @@ OFFSET $10::int
  * 当精确查询和降级查询均无结果时，返回热门酒店。
  * $1 = keyword, $2 = limit, $3 = offset, $4 = city
  */
-function buildGlobalFallbackQuery(sort: string): string {
+function buildGlobalFallbackQuery(sort: string, isHourly: boolean = false): string {
     const orderBy = getOrderByClause(sort);
+    const hourlyTagFilter = isHourly
+        ? "array_to_string(h.tags, ',') ILIKE '%钟点房%'"
+        : '1=1';
     return `
 WITH hotel_min_prices AS (
     SELECT rt."hotelId" AS hotel_id, MIN(rt.price) AS min_price
@@ -286,6 +294,7 @@ FROM "Hotel" h
 LEFT JOIN hotel_min_prices hmp ON hmp.hotel_id = h.id
 WHERE h.status = 1
     AND ($4::text = '' OR h.city = $4::text)
+    AND (${hourlyTagFilter})
 ORDER BY ${orderBy}
 LIMIT $2::int
 OFFSET $3::int
@@ -326,6 +335,8 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
     const pCity = (city ?? '').trim();
     const pKeyword = (keyword ?? '').trim();
     const pSort = sort ?? 'default';
+    const pSearchType = parsed.data.searchType ?? 'hotel';
+    const isHourly = pSearchType === 'hourly';
 
     const hasDateRange = checkIn && checkOut;
     const checkInDate = hasDateRange ? dayjs(checkIn).startOf('day').toDate() : null;
@@ -337,7 +348,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
     let exactMatches: RawHotelRow[] = [];
     let recommendations: RawHotelRow[] = [];
 
-    if (hasDateRange && nightCount > 0) {
+    if (hasDateRange && nightCount > 0 && !isHourly) {
         try {
             exactMatches = await prisma.$queryRawUnsafe<RawHotelRow[]>(
                 buildExactQuery(pSort),
@@ -364,7 +375,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
     if (exactMatches.length === 0) {
         try {
             recommendations = await prisma.$queryRawUnsafe<RawHotelRow[]>(
-                buildFallbackQuery(pSort),
+                buildFallbackQuery(pSort, isHourly),
                 pCity,              // $1
                 pKeyword,           // $2
                 guestCount,         // $3
@@ -384,7 +395,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
     if (exactMatches.length === 0 && recommendations.length === 0) {
         try {
             recommendations = await prisma.$queryRawUnsafe<RawHotelRow[]>(
-                buildGlobalFallbackQuery(pSort),
+                buildGlobalFallbackQuery(pSort, isHourly),
                 pKeyword,           // $1
                 limit,              // $2
                 cursor,             // $3

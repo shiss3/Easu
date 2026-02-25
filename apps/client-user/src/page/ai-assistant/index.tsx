@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
@@ -8,47 +8,58 @@ import Star from 'lucide-react/dist/esm/icons/star';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Brain from 'lucide-react/dist/esm/icons/brain';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import MessageSquarePlus from 'lucide-react/dist/esm/icons/message-square-plus';
+import History from 'lucide-react/dist/esm/icons/history';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import type { HotelVo } from '@/services/hotel-search';
+import { useAiChatStore, type ChatMessage, type ChatMode } from '@/store/aiChatStore';
+
+const ModelSelectorModal = lazy(() => import('@/components/ModelSelectorModal'));
+const HistoryDrawer = lazy(() => import('@/components/HistoryDrawer'));
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
-interface ChatMessage {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    reasoning?: string;
-    toolStatus?: string;
-    hotels?: HotelVo[];
-}
+const QUICK_TAGS = ['南京电竞酒店', '北京能寄存行李的酒店', '上海情侣入住'];
 
-const WELCOME_ID = 'welcome';
-const WELCOME_MESSAGE: ChatMessage = {
-    id: WELCOME_ID,
-    role: 'assistant',
-    content: '你好呀！我是小宿 🏨，你的旅行智能助手。\n\n我可以帮你搜酒店、比价格、做攻略。告诉我你想去哪，我来帮你搞定！',
+const MODE_LABELS: Record<ChatMode, string> = {
+    chat: '智能搜索',
+    reasoner: '深度思考',
 };
 
 const AIAssistantPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const location = useLocation();
-    const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
     const [inputValue, setInputValue] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isModelOpen, setIsModelOpen] = useState(false);
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const autoSentRef = useRef(false);
 
+    const activeSessionId = useAiChatStore(state => state.activeSessionId);
+    const rawMessages = useAiChatStore(state => state.sessions[state.activeSessionId]?.messages) ?? [];
+    const addMessage = useAiChatStore(state => state.addMessage);
+    const validateSession = useAiChatStore(state => state.validateSession);
+    const chatMode = useAiChatStore(state => state.chatMode);
+    const setChatMode = useAiChatStore(state => state.setChatMode);
+
+    const isEmpty = rawMessages.length === 0;
+
+    useEffect(() => {
+        validateSession();
+    }, [validateSession]);
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [rawMessages]);
 
     useEffect(() => {
         return () => { abortControllerRef.current?.abort(); };
     }, []);
 
     const sendMessage = useCallback(async (payload?: string | React.SyntheticEvent) => {
-        // 判断传入的是否是真正的字符串，否则使用输入框的值
         const text = (typeof payload === 'string' ? payload : inputValue).trim();
         if (!text || isGenerating) return;
 
@@ -56,17 +67,18 @@ const AIAssistantPage = () => {
         const assistantId = crypto.randomUUID();
         const assistantMsg: ChatMessage = { id: assistantId, role: 'assistant', content: '' };
 
-        setMessages(prev => [...prev, userMsg, assistantMsg]);
+        addMessage(userMsg);
+        addMessage(assistantMsg);
         setInputValue('');
         setIsGenerating(true);
 
         const ctrl = new AbortController();
         abortControllerRef.current = ctrl;
 
-        const payloadMessages = [...messages, userMsg].map(m => ({
-            role: m.role,
-            content: m.content,
-        }));
+        const currentStoreMessages = useAiChatStore.getState().sessions[activeSessionId]?.messages ?? [];
+        const payloadMessages = currentStoreMessages
+            .filter(m => m.content)
+            .map(m => ({ role: m.role, content: m.content }));
 
         try {
             await fetchEventSource(`${API_BASE}/chat`, {
@@ -80,32 +92,24 @@ const AIAssistantPage = () => {
                     let data: Record<string, unknown>;
                     try { data = JSON.parse(ev.data); } catch { return; }
 
+                    const append = useAiChatStore.getState().appendAssistantContent;
+
                     if (ev.event === 'delta') {
-                        setMessages(prev => prev.map(msg => {
-                            if (msg.id !== assistantId) return msg;
-                            if (data.type === 'reasoning') {
-                                return { ...msg, reasoning: (msg.reasoning ?? '') + (data.text as string) };
-                            }
-                            return { ...msg, content: msg.content + (data.text as string) };
-                        }));
+                        if (data.type === 'reasoning') {
+                            append(assistantId, { reasoning: data.text as string });
+                        } else {
+                            append(assistantId, { content: data.text as string });
+                        }
                     } else if (ev.event === 'tool_status') {
-                        setMessages(prev => prev.map(msg =>
-                            msg.id === assistantId
-                                ? { ...msg, toolStatus: '🔍 正在为您检索酒店...' }
-                                : msg,
-                        ));
+                        append(assistantId, { toolStatus: '🔍 正在为您检索酒店...' });
                     } else if (ev.event === 'tool_data') {
-                        setMessages(prev => prev.map(msg =>
-                            msg.id === assistantId
-                                ? { ...msg, hotels: data.hotels as HotelVo[], toolStatus: '' }
-                                : msg,
-                        ));
+                        append(assistantId, { hotels: data.hotels as HotelVo[], toolStatus: '' });
                     } else if (ev.event === 'error') {
-                        setMessages(prev => prev.map(msg =>
-                            msg.id === assistantId
-                                ? { ...msg, content: msg.content || (data.message as string) || '抱歉，出了点问题' }
-                                : msg,
-                        ));
+                        const current = useAiChatStore.getState().sessions[activeSessionId]?.messages
+                            .find(m => m.id === assistantId);
+                        if (!current?.content) {
+                            append(assistantId, { content: (data.message as string) || '抱歉，出了点问题' });
+                        }
                     }
                 },
                 onclose() { setIsGenerating(false); },
@@ -116,24 +120,22 @@ const AIAssistantPage = () => {
             });
         } catch {
             if (!ctrl.signal.aborted) {
-                setMessages(prev => prev.map(msg =>
-                    msg.id === assistantId && !msg.content
-                        ? { ...msg, content: '网络连接异常，请稍后重试。' }
-                        : msg,
-                ));
+                const current = useAiChatStore.getState().sessions[activeSessionId]?.messages
+                    .find(m => m.id === assistantId);
+                if (!current?.content) {
+                    useAiChatStore.getState().appendAssistantContent(assistantId, {
+                        content: '网络连接异常，请稍后重试。',
+                    });
+                }
             }
         } finally {
             setIsGenerating(false);
         }
-    }, [inputValue, isGenerating, messages]);
+    }, [inputValue, isGenerating, activeSessionId, addMessage]);
 
     useEffect(() => {
         const promptFromUrl = searchParams.get('prompt');
-        // 如果有 prompt 并且还没有发送过
         if (promptFromUrl && !autoSentRef.current) {
-            // 使用 setTimeout 延迟 50ms 发送
-            // 如果是 Strict Mode 的第一次虚拟挂载，组件会立即卸载并 clearTimeout，从而阻止多余的请求。
-            // 只有第二次真实的挂载，才会安稳地活过 50ms 并执行发送。
             const timer = setTimeout(() => {
                 autoSentRef.current = true;
                 sendMessage(promptFromUrl);
@@ -157,8 +159,8 @@ const AIAssistantPage = () => {
     }, [sendMessage]);
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 relative">
-            <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-blue-50/80 to-slate-50 pointer-events-none" />
+        <div className="flex flex-col h-screen bg-white relative">
+            <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-blue-50/80 to-white pointer-events-none" />
 
             {/* Header */}
             <div className="flex items-center px-4 py-3 z-10 shrink-0">
@@ -166,48 +168,87 @@ const AIAssistantPage = () => {
                     <ChevronLeft size={28} />
                 </button>
                 <span className="ml-2 font-semibold text-slate-800">小宿 AI 助手</span>
+                <div className="ml-auto flex items-center gap-1">
+                    <button
+                        onClick={() => useAiChatStore.getState().createNewSession()}
+                        className="p-2 text-slate-500 hover:text-blue-600 transition-colors"
+                    >
+                        <MessageSquarePlus size={22} />
+                    </button>
+                    <button
+                        onClick={() => setIsHistoryOpen(true)}
+                        className="p-2 text-slate-500 hover:text-blue-600 transition-colors"
+                    >
+                        <History size={22} />
+                    </button>
+                </div>
             </div>
 
-            {/* Messages */}
+            {/* Messages / Empty State */}
             <div className="flex-1 overflow-y-auto px-4 pb-44 z-10">
-                {messages.map(msg => (
-                    <div key={msg.id} className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {msg.role === 'user' ? (
-                            <div className="max-w-[80%] bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-br-sm text-sm whitespace-pre-wrap shadow-sm">
-                                {msg.content}
-                            </div>
-                        ) : (
-                            <div className="max-w-[90%] space-y-2">
-                                <ReasoningBlock reasoning={msg.reasoning} />
-                                {msg.toolStatus && <ToolStatusBubble text={msg.toolStatus} />}
-                                {msg.content && (
-                                    <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm text-sm text-slate-800 whitespace-pre-wrap shadow-sm leading-relaxed">
-                                        {renderInterlacedContent(msg.content, msg.hotels, navigate)}
-                                    </div>
-                                )}
-                                {!msg.content && !msg.toolStatus && !msg.hotels?.length && !msg.reasoning && (
-                                    <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
-                                        <span className="inline-flex gap-1">
-                                            <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
-                                            <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
-                                            <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:300ms]" />
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                {isEmpty ? (
+                    <div className="flex flex-col items-center justify-center h-full">
+                        <Sparkles size={40} className="text-blue-500/60 mb-4" />
+                        <h2 className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 font-bold text-2xl mb-8">
+                            用小宿让旅程有处可栖
+                        </h2>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {QUICK_TAGS.map(tag => (
+                                <button
+                                    key={tag}
+                                    onClick={() => sendMessage(tag)}
+                                    className="bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-sm hover:bg-blue-100 transition-colors"
+                                >
+                                    {tag}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                ))}
-                <div ref={messagesEndRef} />
+                ) : (
+                    <>
+                        {rawMessages.map(msg => (
+                            <div key={msg.id} className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                {msg.role === 'user' ? (
+                                    <div className="max-w-[80%] bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-br-sm text-sm whitespace-pre-wrap shadow-sm">
+                                        {msg.content}
+                                    </div>
+                                ) : (
+                                    <div className="max-w-[90%] space-y-2">
+                                        <ReasoningBlock reasoning={msg.reasoning} />
+                                        {msg.toolStatus && <ToolStatusBubble text={msg.toolStatus} />}
+                                        {msg.content && (
+                                            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm text-sm text-slate-800 whitespace-pre-wrap shadow-sm leading-relaxed border border-slate-100">
+                                                {renderInterlacedContent(msg.content, msg.hotels, navigate)}
+                                            </div>
+                                        )}
+                                        {!msg.content && !msg.toolStatus && !msg.hotels?.length && !msg.reasoning && (
+                                            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm border border-slate-100">
+                                                <span className="inline-flex gap-1">
+                                                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
+                                                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
+                                                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:300ms]" />
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </>
+                )}
             </div>
 
             {/* Input Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white p-4 pb-8 z-20 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-8 z-20 shadow-sm">
                 <div className="flex gap-3 mb-3 overflow-x-auto px-1">
-                    <div className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full text-xs font-medium border border-blue-100/50">
-                        <Brain size={14} />
-                        <span>深度思考</span>
-                    </div>
+                    <button
+                        onClick={() => setIsModelOpen(true)}
+                        className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full text-xs font-medium border border-blue-100/50 hover:bg-blue-100 transition-colors"
+                    >
+                        <span>{MODE_LABELS[chatMode]}</span>
+                        <ChevronDown size={12} />
+                    </button>
                 </div>
                 <div className="relative flex items-center gap-2">
                     <input
@@ -236,6 +277,24 @@ const AIAssistantPage = () => {
                     )}
                 </div>
             </div>
+
+            {/* Lazy-loaded overlays */}
+            <Suspense fallback={null}>
+                {isModelOpen && (
+                    <ModelSelectorModal
+                        isOpen={isModelOpen}
+                        onClose={() => setIsModelOpen(false)}
+                        currentMode={chatMode}
+                        onSelect={setChatMode}
+                    />
+                )}
+                {isHistoryOpen && (
+                    <HistoryDrawer
+                        isOpen={isHistoryOpen}
+                        onClose={() => setIsHistoryOpen(false)}
+                    />
+                )}
+            </Suspense>
         </div>
     );
 };
@@ -254,7 +313,7 @@ function ReasoningBlock({ reasoning }: { reasoning?: string }) {
                 className="flex items-center gap-1 font-medium text-slate-500 w-full"
             >
                 <Brain size={12} className="text-blue-500" />
-                <span>深度思考过程</span>
+                <span>思考过程</span>
                 <ChevronDown size={14} className={`ml-auto transition-transform ${expanded ? 'rotate-180' : ''}`} />
             </button>
             {expanded && (
