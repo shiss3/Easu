@@ -27,6 +27,7 @@ const CitySelector = lazy(() => import('@/components/Home/CitySelector'));
 const Calendar = lazy(() => import('@/components/Calendar'));
 const PriceStarSelector = lazy(() => import('@/components/Home/PriceStarSelector'));
 const SortSelector = lazy(() => import('@/components/SortSelector'));
+const FilterSelector = lazy(() => import('@/components/FilterSelector'));
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 const LAZY_FALLBACK = null
@@ -100,7 +101,9 @@ const SearchResultPage = () => {
     const [isCalendarVisible, setIsCalendarVisible] = useState(false);
     const [showPriceSelector, setShowPriceSelector] = useState(false);
     const [showSortSelector, setShowSortSelector] = useState(false);
+    const [showFilterSelector, setShowFilterSelector] = useState(false);
     const [sortValue, setSortValue] = useState<SortOption>('default');
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const headerRef = useRef<HTMLDivElement>(null);
     const [headerHeight, setHeaderHeight] = useState(0);
 
@@ -186,8 +189,9 @@ const SearchResultPage = () => {
         minPrice: filters.minPrice ?? undefined,
         maxPrice: filters.maxPrice ?? undefined,
         sort: sortValue !== 'default' ? sortValue : undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
         searchType,
-    }), [city, startRaw, endRaw, totalPersons, guest.rooms, keywordFromUrl, filters.minPrice, filters.maxPrice, sortValue, searchType]);
+    }), [city, startRaw, endRaw, totalPersons, guest.rooms, keywordFromUrl, filters.minPrice, filters.maxPrice, sortValue, selectedTags, searchType]);
 
     const {
         allHotels,
@@ -254,6 +258,7 @@ const SearchResultPage = () => {
     }, []);
 
     const closeSortSelector = useCallback(() => setShowSortSelector(false), []);
+    const closeFilterSelector = useCallback(() => setShowFilterSelector(false), []);
 
     const openPanel = () => {
         setTempCity(city);
@@ -473,16 +478,13 @@ const SearchResultPage = () => {
                             className={`font-bold flex items-center gap-0.5 cursor-pointer ${
                                 sortValue !== 'default' || showSortSelector ? 'text-blue-600' : 'text-gray-600'
                             }`}
-                            onClick={() => setShowSortSelector((v) => !v)}
+                            onClick={() => { setShowFilterSelector(false); setShowSortSelector((v) => !v) }}
                         >
                             {SORT_LABEL_MAP[sortValue]}
                             <ChevronDown
                                 size={12}
                                 className={`transition-transform duration-200 ${showSortSelector ? 'rotate-180' : ''}`}
                             />
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                            位置距离 <ChevronDown size={12} />
                         </span>
                         <span
                             className="flex items-center gap-0.5 cursor-pointer"
@@ -493,8 +495,22 @@ const SearchResultPage = () => {
                         >
                             价格/星级 <ChevronDown size={12} />
                         </span>
-                        <span className="flex items-center gap-1">
-                            筛选 <Filter size={12} />
+                        <span
+                            className={`flex items-center gap-1 cursor-pointer ${
+                                selectedTags.length > 0 || showFilterSelector ? 'text-blue-600 font-bold' : ''
+                            }`}
+                            onClick={() => {
+                                setShowSortSelector(false)
+                                setShowFilterSelector(v => !v)
+                            }}
+                        >
+                            筛选
+                            {selectedTags.length > 0 && (
+                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] leading-none font-bold">
+                                    {selectedTags.length}
+                                </span>
+                            )}
+                            <Filter size={12} />
                         </span>
                     </div>
                 )}
@@ -577,6 +593,17 @@ const SearchResultPage = () => {
                     value={sortValue}
                     onChange={setSortValue}
                     onClose={closeSortSelector}
+                    topOffset={headerHeight}
+                />
+            </Suspense>
+
+            {/* 懒加载弹窗：高级筛选 */}
+            <Suspense fallback={null}>
+                <FilterSelector
+                    visible={showFilterSelector}
+                    value={selectedTags}
+                    onChange={setSelectedTags}
+                    onClose={closeFilterSelector}
                     topOffset={headerHeight}
                 />
             </Suspense>

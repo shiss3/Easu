@@ -17,6 +17,7 @@ const searchSchema = z.object({
     minPrice: z.number().int().min(0).optional().nullable(),
     maxPrice: z.number().int().min(0).optional().nullable(),
     sort: z.enum(['default', 'rating', 'price_low', 'price_high']).optional(),
+    tags: z.array(z.string()).optional(),
     searchType: z.enum(['hotel', 'hourly']).optional(),
     cursor: z.number().int().min(0).optional(),
     limit: z.number().int().min(1).max(50).optional(),
@@ -114,12 +115,12 @@ export class SearchValidationError extends Error {
 // ── SQL Builders ────────────────────────────────────────────────────────
 
 /**
- * 硬约束完整查询 (14 params):
+ * 硬约束完整查询 (15 params):
  * $1 = checkInDate, $2 = checkOutDate, $3 = rooms, $4 = guestCount,
  * $5 = city, $6 = keyword,
  * $7 = hasWindow, $8 = hasBreakfast, $9 = childrenFriendly,
  * $10 = minPrice, $11 = maxPrice,
- * $12 = limit, $13 = offset, $14 = nightCount
+ * $12 = limit, $13 = offset, $14 = nightCount, $15 = tags
  */
 function buildExactQuery(sort: string): string {
     const orderBy = getOrderByClause(sort);
@@ -188,6 +189,7 @@ WHERE
         ($10::int = 0 AND $11::int >= ${PG_INT4_MAX})
         OR (hmp.min_price BETWEEN $10::int AND $11::int)
     )
+    AND ($15::text[] IS NULL OR h.tags @> $15::text[])
 ORDER BY ${orderBy}
 LIMIT $12::int
 OFFSET $13::int
@@ -195,12 +197,12 @@ OFFSET $13::int
 }
 
 /**
- * 兜底降级查询 (10 params，不检查库存):
+ * 兜底降级查询 (11 params，不检查库存):
  * 使用 LEFT JOIN 保证即使没有房型的酒店也能被查出来。
  * $1 = city, $2 = keyword, $3 = guestCount,
  * $4 = minPrice, $5 = maxPrice,
  * $6 = hasWindow, $7 = hasBreakfast, $8 = childrenFriendly,
- * $9 = limit, $10 = offset
+ * $9 = limit, $10 = offset, $11 = tags
  */
 function buildFallbackQuery(sort: string, isHourly: boolean = false): string {
     const orderBy = getOrderByClause(sort);
@@ -252,6 +254,7 @@ WHERE
     )
     AND ($3::int <= 1 OR COALESCE(hri.max_capacity, 99) >= $3::int)
     AND (${hourlyTagFilter})
+    AND ($11::text[] IS NULL OR h.tags @> $11::text[])
 ORDER BY ${orderBy}
 LIMIT $9::int
 OFFSET $10::int
@@ -259,9 +262,9 @@ OFFSET $10::int
 }
 
 /**
- * 全局兜底查询 (4 params，带可选城市约束):
+ * 全局兜底查询 (5 params，带可选城市约束):
  * 当精确查询和降级查询均无结果时，返回热门酒店。
- * $1 = keyword, $2 = limit, $3 = offset, $4 = city
+ * $1 = keyword, $2 = limit, $3 = offset, $4 = city, $5 = tags
  */
 function buildGlobalFallbackQuery(sort: string, isHourly: boolean = false): string {
     const orderBy = getOrderByClause(sort);
@@ -295,6 +298,7 @@ LEFT JOIN hotel_min_prices hmp ON hmp.hotel_id = h.id
 WHERE h.status = 1
     AND ($4::text = '' OR h.city = $4::text)
     AND (${hourlyTagFilter})
+    AND ($5::text[] IS NULL OR h.tags @> $5::text[])
 ORDER BY ${orderBy}
 LIMIT $2::int
 OFFSET $3::int
@@ -335,6 +339,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
     const pCity = (city ?? '').trim();
     const pKeyword = (keyword ?? '').trim();
     const pSort = sort ?? 'default';
+    const pTags = (parsed.data.tags?.length) ? parsed.data.tags : null;
     const pSearchType = parsed.data.searchType ?? 'hotel';
     const isHourly = pSearchType === 'hourly';
 
@@ -366,6 +371,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 limit,              // $12
                 cursor,             // $13
                 nightCount,         // $14
+                pTags,              // $15
             );
         } catch (err) {
             console.error('Exact query failed, falling back:', err);
@@ -386,6 +392,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 pChildrenFriendly,  // $8
                 limit,              // $9
                 cursor,             // $10
+                pTags,              // $11
             );
         } catch (err) {
             console.error('Fallback query failed:', err);
@@ -400,6 +407,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
                 limit,              // $2
                 cursor,             // $3
                 pCity,              // $4
+                pTags,              // $5
             );
         } catch (err) {
             console.error('Global fallback query failed:', err);

@@ -12,7 +12,7 @@ import MessageSquarePlus from 'lucide-react/dist/esm/icons/message-square-plus';
 import History from 'lucide-react/dist/esm/icons/history';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import type { HotelVo } from '@/services/hotel-search';
-import { useAiChatStore, type ChatMessage, type ChatMode } from '@/store/aiChatStore';
+import { useAiChatStore, safeGenerateId, type ChatMessage, type ChatMode } from '@/store/aiChatStore';
 
 const ModelSelectorModal = lazy(() => import('@/components/ModelSelectorModal'));
 const HistoryDrawer = lazy(() => import('@/components/HistoryDrawer'));
@@ -63,8 +63,8 @@ const AIAssistantPage = () => {
         const text = (typeof payload === 'string' ? payload : inputValue).trim();
         if (!text || isGenerating) return;
 
-        const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text };
-        const assistantId = crypto.randomUUID();
+        const userMsg: ChatMessage = { id: safeGenerateId(), role: 'user', content: text };
+        const assistantId = safeGenerateId();
         const assistantMsg: ChatMessage = { id: assistantId, role: 'assistant', content: '' };
 
         addMessage(userMsg);
@@ -167,7 +167,7 @@ const AIAssistantPage = () => {
                 <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-slate-800">
                     <ChevronLeft size={28} />
                 </button>
-                <span className="ml-2 font-semibold text-slate-800">小宿 AI 助手</span>
+                <span className="ml-2 font-semibold text-slate-800">小宿 AI </span>
                 <div className="ml-auto flex items-center gap-1">
                     <button
                         onClick={() => useAiChatStore.getState().createNewSession()}
@@ -189,15 +189,15 @@ const AIAssistantPage = () => {
                 {isEmpty ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <Sparkles size={40} className="text-blue-500/60 mb-4" />
-                        <h2 className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 font-bold text-2xl mb-8">
-                            用小宿让旅程有处可栖
+                        <h2 className="font-bold text-2xl mb-8 text-gray-900">
+                            用<span className="text-blue-600">小宿</span>让旅程有处可栖
                         </h2>
                         <div className="flex flex-wrap justify-center gap-2">
                             {QUICK_TAGS.map(tag => (
                                 <button
                                     key={tag}
                                     onClick={() => sendMessage(tag)}
-                                    className="bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-sm hover:bg-blue-100 transition-colors"
+                                    className="bg-gray-100 text-black px-4 py-2 rounded-full text-sm hover:bg-blue-100 transition-colors"
                                 >
                                     {tag}
                                 </button>

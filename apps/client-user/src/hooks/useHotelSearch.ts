@@ -19,6 +19,7 @@ export interface UseHotelSearchParams {
     minPrice?: number;
     maxPrice?: number;
     sort?: string;
+    tags?: string[];
 }
 
 const PAGE_SIZE = 20;
@@ -29,6 +30,7 @@ function cleanParams(raw: UseHotelSearchParams): Record<string, unknown> {
         if (v === undefined || v === null) continue;
         if (typeof v === 'string' && v.trim() === '') continue;
         if (typeof v === 'number' && !Number.isFinite(v)) continue;
+        if (Array.isArray(v) && v.length === 0) continue;
         out[k] = v;
     }
     return out;
