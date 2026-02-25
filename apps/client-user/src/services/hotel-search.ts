@@ -25,6 +25,7 @@ export interface HotelVo {
     name: string;
     address: string;
     score: number;
+    star: number;
     reviewCount: number;
     coverImage: string;
     tags: string[];

@@ -65,6 +65,7 @@ interface RawHotelRow {
     tags: string[];
     price_desc: string | null;
     score: number;
+    star: number;
     review_count: number;
     sort_order: number;
     min_price: number;
@@ -82,6 +83,7 @@ interface HotelVo {
     tags: string[];
     priceDesc: string | null;
     score: number;
+    star: number;
     reviewCount: number;
     minPrice: number;
     isFallback: boolean;
@@ -169,6 +171,7 @@ SELECT
     h.tags,
     h."priceDesc" AS price_desc,
     h.score,
+    h.star,
     h."reviewCount" AS review_count,
     h."sortOrder" AS sort_order,
     hmp.min_price,
@@ -235,6 +238,7 @@ SELECT
     h.tags,
     h."priceDesc" AS price_desc,
     h.score,
+    h.star,
     h."reviewCount" AS review_count,
     h."sortOrder" AS sort_order,
     COALESCE(hri.min_price, 0) AS min_price,
@@ -293,6 +297,7 @@ SELECT
     h.tags,
     h."priceDesc" AS price_desc,
     h.score,
+    h.star,
     h."reviewCount" AS review_count,
     h."sortOrder" AS sort_order,
     COALESCE(hmp.min_price, 0) AS min_price,
@@ -434,6 +439,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
         tags: row.tags ?? [],
         priceDesc: row.price_desc,
         score: Number(row.score),
+        star: Number(row.star),
         reviewCount: Number(row.review_count),
         minPrice: Number(row.min_price),
         isFallback,

@@ -46,21 +46,43 @@ const CITIES = [
 const PREFIXES = ['皇冠', '希尔顿', '万豪', '亚朵', '全季', '悦榕庄', '洲际', '喜来登', '凯悦', '丽思', '香格里拉', '桔子', '汉庭', '如家', '维也纳'];
 const SUFFIXES = ['大酒店', '度假村', '精品酒店', '公寓', '公馆', '国际酒店', '中心酒店', '商旅酒店', '电竞酒店'];
 
-// 3. 标签池
-const TAGS_POOL = [
-    //重要服务
-    '钟点房',
-    // 商务基础
-    '免费WIFI', '含早', '免费停车', '24小时前台', '行李寄存', '近地铁',
-    // 设施进阶
-    '健身房', '恒温游泳池', 'SPA', '会议室', '接机服务', '咖啡厅', '自助洗衣房', '智能客控', '机器人送物',
-    // 情侣/度假风
-    '情侣主题', '带浴缸', '全景落地窗', '海景/江景', '氛围感灯光', '隔音极佳', '私人影院',
-    // 亲子/家庭
-    '儿童乐园', '家庭套房', '提供婴儿床', '亲子活动',
-    // 电竞/特色
-    '高配电脑', '千兆光纤', '电竞椅', '宠物友好'
-];
+// 3. 标签池 —— 按类型分组，方便按星级智能组合
+const FACILITY_TAGS = ['免费停车', '健身房', '恒温游泳池', 'SPA', '会议室', '咖啡厅', '自助洗衣房', '私人影院'];
+const SERVICE_TAGS = ['免费WIFI', '24小时前台', '行李寄存', '接机服务', '智能客控', '机器人送物', '近地铁'];
+const VIBE_TAGS = ['情侣主题', '带浴缸', '全景落地窗', '海景/江景', '氛围感灯光', '隔音极佳'];
+const FAMILY_TAGS = ['儿童乐园', '家庭套房', '提供婴儿床', '亲子活动'];
+const SPECIAL_TAGS = ['钟点房', '高配电脑', '千兆光纤', '电竞椅', '宠物友好'];
+
+// 星级 → 评分区间映射
+const STAR_SCORE_MAP: Record<number, [number, number]> = {
+    2: [3.0, 3.9],
+    3: [3.5, 4.3],
+    4: [4.0, 4.7],
+    5: [4.5, 5.0],
+};
+
+// 星级 → 标签数量映射（高星酒店设施更丰富）
+const STAR_TAG_COUNT: Record<number, { facility: number; service: number; extra: number }> = {
+    2: { facility: 1, service: 2, extra: 1 },
+    3: { facility: 2, service: 3, extra: 1 },
+    4: { facility: 3, service: 4, extra: 2 },
+    5: { facility: 5, service: 5, extra: 3 },
+};
+
+function generateHotelTags(star: number): string[] {
+    const cfg = STAR_TAG_COUNT[star] || STAR_TAG_COUNT[3];
+    const tags: string[] = [];
+    tags.push(...randomPickMultiple(FACILITY_TAGS, cfg.facility));
+    tags.push(...randomPickMultiple(SERVICE_TAGS, cfg.service));
+    const extraPool = [...VIBE_TAGS, ...FAMILY_TAGS, ...SPECIAL_TAGS];
+    tags.push(...randomPickMultiple(extraPool, cfg.extra));
+    return [...new Set(tags)];
+}
+
+function generateScore(star: number): number {
+    const [min, max] = STAR_SCORE_MAP[star] || [3.5, 4.5];
+    return Number((min + Math.random() * (max - min)).toFixed(1));
+}
 
 // 4. 高清图片池
 const HOTEL_IMAGES = [
@@ -148,30 +170,33 @@ async function main() {
     for (const city of CITIES) {
         console.log(`\n🏗️  正在生成 [${city.name}] 的 100 家酒店...`);
 
-        // 每个城市生成 100 家酒店
         for (let i = 1; i <= 100; i++) {
-            // --- 价格均匀分配算法 ---
-            // i % 5 会产生 0, 1, 2, 3, 4，分别对应 100+, 200+, 300+, 400+, 500+ 价位段
-            // 确保了 100 家酒店里，每个价位段刚好有 20 家
+            // --- 价格 & 星级联动 ---
+            // 价位段: 0→经济, 1→舒适, 2→高端, 3→豪华, 4→奢华
             const priceBucket = i % 5;
             const basePrice = 100 + (priceBucket * 100) + randomInt(0, 99);
 
-            // 酒店基本信息
+            // 星级与价位段关联：经济型 2-3 星，中端 3-4 星，高端 4-5 星
+            const starByBucket: Record<number, number[]> = {
+                0: [2, 3], 1: [2, 3], 2: [3, 4], 3: [4, 5], 4: [4, 5],
+            };
+            const star = randomPick(starByBucket[priceBucket]);
+
             const name = `${city.name}${randomPick(PREFIXES)}${randomPick(SUFFIXES)} (${i}号店)`;
             const loc = randomLocation(city.lat, city.lng);
             const hotelImages = randomPickMultiple(HOTEL_IMAGES, 5);
 
-            // 随机标签配置
-            const tags = randomPickMultiple(TAGS_POOL, randomInt(3, 6));
-
-            // 核心逻辑：第 1 家全国精选，后续随机精选
+            // 标签：按星级智能生成
+            const tags = generateHotelTags(star);
             if (i === 1) {
                 tags.unshift('全国精选');
-            } else {
-                if (Math.random() < 0.2) tags.unshift('精选');
+            } else if (Math.random() < 0.2) {
+                tags.unshift('精选');
             }
 
-            // 写入酒店 (存入数据库)
+            // 评分与星级关联
+            const score = generateScore(star);
+
             const hotel = await prisma.hotel.create({
                 data: {
                     name,
@@ -181,20 +206,20 @@ async function main() {
                     longitude: loc.longitude,
                     coverImage: hotelImages[0],
                     images: hotelImages,
-                    description: `这是位于${city.name}的一家优质酒店，提供舒适的住宿环境和贴心的服务。`,
-                    tags: tags,
+                    description: `这是位于${city.name}的一家${star}星级优质酒店，提供舒适的住宿环境和贴心的服务。`,
+                    tags,
+                    star,
                     priceDesc: `¥${basePrice}起`,
                     status: 1,
-                    score: Number((4.0 + Math.random()).toFixed(1)),
-                    reviewCount: randomInt(10, 3000)
+                    score,
+                    reviewCount: randomInt(star * 50, star * 600),
                 }
             });
 
-            // --- 收集 Banner 数据 ---
+            // --- Banner ---
             if (i === 1) {
-                // 第 1 家：作为全国精选投放到全国首页
                 bannerDataToInsert.push({
-                    targetCity: null, // 全国通投
+                    targetCity: null,
                     hotelId: hotel.id,
                     title: `全国精选 · ${city.name}站`,
                     subTitle: '品质认证 · 闭眼入',
@@ -203,7 +228,6 @@ async function main() {
                     startAt, endAt
                 });
             } else if (i >= 2 && i <= 4) {
-                // 第 2, 3, 4 家：作为城市精选投放到该城市首页
                 bannerDataToInsert.push({
                     targetCity: city.name,
                     hotelId: hotel.id,
@@ -215,16 +239,38 @@ async function main() {
                 });
             }
 
-            // --- 房型与库存生成 ---
-            // 根据酒店的基础价格，动态生成 4 个档次的房型
+            // --- 房型：4 种差异化属性，完美覆盖所有筛选维度 ---
             const roomTypesToCreate = [
-                { name: '舒适大床房', price: basePrice * 100, bed: '1张1.5m床' }, // 单位: 分
-                { name: '商务双床房', price: (basePrice + 50) * 100, bed: '2张1.2m床' },
-                { name: '豪华景观房', price: (basePrice + 120) * 100, bed: '1张1.8m床' },
-                { name: '行政套房', price: (basePrice + 300) * 100, bed: '1张2.0m床' }
+                {
+                    name: '舒适大床房', price: basePrice * 100, bed: '1张1.5m床',
+                    capacity: 2, hasWindow: false, hasBreakfast: false, childrenFriendly: false,
+                    tags: ['免费WIFI'],
+                },
+                {
+                    name: '商务双床房', price: (basePrice + 50) * 100, bed: '2张1.2m床',
+                    capacity: 2, hasWindow: true, hasBreakfast: true, childrenFriendly: false,
+                    tags: ['含早', '有窗', '办公桌', '免费WIFI'],
+                },
+                {
+                    name: '豪华景观房', price: (basePrice + 120) * 100, bed: '1张1.8m床',
+                    capacity: 2, hasWindow: true, hasBreakfast: true, childrenFriendly: true,
+                    tags: ['含早', '有窗', '景观', '儿童拖鞋', '免费WIFI'],
+                },
+                {
+                    name: '家庭套房', price: (basePrice + 300) * 100, bed: '1张2.0m床+1张1.2m床',
+                    capacity: 4, hasWindow: true, hasBreakfast: true, childrenFriendly: true,
+                    tags: ['含早', '有窗', '家庭出行', '儿童拖鞋', '加床服务', '免费WIFI'],
+                },
             ];
 
             const inventoriesToInsert: any[] = [];
+
+            // 决定这家酒店是否被"挖坑"（约 15% 的酒店会在某些天没房）
+            const hasInventoryHole = Math.random() < 0.15;
+            // 挖坑日期：随机选 1~3 天
+            const holeDays = hasInventoryHole
+                ? randomPickMultiple(Array.from({ length: 30 }, (_, k) => k), randomInt(1, 3))
+                : [];
 
             for (const rt of roomTypesToCreate) {
                 const roomType = await prisma.roomType.create({
@@ -233,25 +279,43 @@ async function main() {
                         name: rt.name,
                         price: rt.price,
                         bedInfo: rt.bed,
-                        images: [randomPick(ROOM_IMAGES)],
-                        salesVolume: randomInt(0, 800)
+                        images: randomPickMultiple(ROOM_IMAGES, randomInt(2, 4)),
+                        salesVolume: randomInt(0, 800),
+                        capacity: rt.capacity,
+                        hasWindow: rt.hasWindow,
+                        hasBreakfast: rt.hasBreakfast,
+                        childrenFriendly: rt.childrenFriendly,
+                        tags: rt.tags,
                     }
                 });
 
-                // 为该房型生成 30 天库存
                 for (let d = 0; d < 30; d++) {
                     const date = getFutureDate(d);
                     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+                    // 库存：被挖坑的日期 → 所有房型 quota=0
+                    let quota: number;
+                    if (holeDays.includes(d)) {
+                        quota = 0;
+                    } else {
+                        quota = randomInt(3, 20);
+                    }
+
+                    // 价格波动：周末 +20%，随机浮动 ±8%
+                    let dayPrice = rt.price;
+                    if (isWeekend) dayPrice = Math.floor(dayPrice * 1.2);
+                    const fluctuation = 1 + (Math.random() * 0.16 - 0.08);
+                    dayPrice = Math.floor(dayPrice * fluctuation);
+
                     inventoriesToInsert.push({
                         roomTypeId: roomType.id,
-                        date: date,
-                        quota: randomInt(5, 20),
-                        price: isWeekend ? Math.floor(rt.price * 1.2) : rt.price // 周末涨价 20%
+                        date,
+                        quota,
+                        price: dayPrice,
                     });
                 }
             }
 
-            // 批量插入库存 (提升性能)
             await prisma.roomInventory.createMany({ data: inventoriesToInsert });
 
             if (i % 25 === 0) {
