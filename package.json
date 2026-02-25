@@ -1,5 +1,5 @@
 {
-  "name": "Easu",
+  "name": "easu",
   "version": "1.1.0",
   "description": "",
   "main": "index.js",
@@ -11,8 +11,32 @@
   "license": "ISC",
   "packageManager": "pnpm@10.26.1",
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.5.0",
     "prettier": "^3.8.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rainy-zy3/Easu.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rainy-zy3/Easu/issues"
+  },
+  "homepage": "https://github.com/rainy-zy3/Easu#readme",
+  "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.2.3",
+    "antd": "^6.2.3",
+    "dotenv": "^17.2.3",
+    "prisma": "^7.3.0"
   }
 }
