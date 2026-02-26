@@ -5,10 +5,15 @@ import type {HotelVo} from "@/services/hotel-search.ts";
 export interface RoomTypeVo {
     id: number;
     name: string;
-    price: number; // 分
+    price: number; // 元
     bedInfo: string;
     images: string[];
     salesVolume: number;
+    hasBreakfast?: boolean;
+    hasWindow?: boolean;
+    tags?: string[];
+    capacity?: number;
+    quota?: number;
 }
 export interface HotelDetailVo extends HotelVo {
     description?: string;
@@ -17,6 +22,15 @@ export interface HotelDetailVo extends HotelVo {
 }
 
 //获取酒店详情api
-export const getHotelDetailApi = (id: string) => {
-    return httpClient.get<HotelDetailVo>(`/hotel/${id}`);
+export const getHotelDetailApi = (id: string, checkIn?: string, checkOut?: string) => {
+    return httpClient.get<HotelDetailVo>(`/hotel/${id}`, {
+        params: {
+            ...(checkIn ? { checkIn } : {}),
+            ...(checkOut ? { checkOut } : {}),
+        },
+    });
+};
+
+export const bookRoomApi = (roomId: number, checkIn: string, checkOut: string) => {
+    return httpClient.post<void>(`/room/${roomId}/book`, { checkIn, checkOut });
 };

@@ -64,11 +64,14 @@ export const getRegeoLocation = async (req: Request, res: Response) => {
         const pois = Array.isArray(regeocode.pois) ? regeocode.pois : [];
         const topPoi = pois[0] || {};
 
+        const districtValue = addressComponent.district || '';
+
         res.json({
             code: 200,
             message: '查询成功',
             data: {
                 city: cityValue,
+                district: districtValue,
                 formattedAddress,
                 poiName: topPoi.name || '',
                 poiAddress: topPoi.address || '',

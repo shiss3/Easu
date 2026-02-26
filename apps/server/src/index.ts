@@ -57,6 +57,6 @@ app.use((req, _res, next) => {
 // 路由挂载
 app.use('/api', routes); // 最终地址: http://localhost:3001/api
 
-app.listen(PORT, () => {
+app.listen(PORT as number, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

@@ -1,21 +1,22 @@
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils.ts"
 
-import { AgeSelectorModal } from "./AgeSelectorModal"
-import { SelectionModal } from "./SelectionModal"
+import { AgeSelectorModal } from "./AgeSelectorModal.tsx"
+import { SelectionModal } from "./SelectionModal.tsx"
 import {
   DEFAULT_GUEST_SELECTION,
   GUEST_SELECTION_STORAGE_KEY,
   normalizeGuestSelection,
   type ChildAge,
   type GuestSelection,
-} from "./types"
+} from "./types.ts"
 
 export type GuestSelectorProps = {
   className?: string
   triggerClassName?: string
   onConfirm?: (selection: GuestSelection) => void
+  onPriceStarClick?: () => void
 }
 
 function summarize(selection: GuestSelection) {
@@ -41,7 +42,7 @@ function writeToStorage(selection: GuestSelection) {
   }
 }
 
-export default function GuestSelector({ className, triggerClassName, onConfirm }: GuestSelectorProps) {
+export default function GuestSelector({ className, triggerClassName, onConfirm, onPriceStarClick }: GuestSelectorProps) {
   const [confirmed, setConfirmed] = React.useState<GuestSelection>(() => readFromStorage())
   const [open, setOpen] = React.useState(false)
   const [draft, setDraft] = React.useState<GuestSelection>(() => readFromStorage())
@@ -90,7 +91,7 @@ export default function GuestSelector({ className, triggerClassName, onConfirm }
         type="button"
         onClick={openModal}
         className={cn(
-          "flex w-full items-center justify-between gap-3 text-left text-lg",
+          "flex w-full items-center text-left text-lg",
           "active:opacity-80",
           triggerClassName
         )}
@@ -98,7 +99,18 @@ export default function GuestSelector({ className, triggerClassName, onConfirm }
         <div className="text-gray-900">
           {summarize(confirmed)} <span className="ml-2 text-sm text-gray-300">▼</span>
         </div>
-        <div className="text-sm text-gray-300">价格/星级</div>
+        <div className="mx-3 h-5 w-px bg-gray-200 shrink-0" />
+        <div
+          className="text-sm text-gray-400 active:text-blue-500 shrink-0"
+          onClick={(e) => {
+            if (onPriceStarClick) {
+              e.stopPropagation()
+              onPriceStarClick()
+            }
+          }}
+        >
+          价格/星级
+        </div>
       </button>
 
       <SelectionModal

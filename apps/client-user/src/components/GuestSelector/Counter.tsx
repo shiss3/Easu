@@ -1,6 +1,6 @@
 import { Minus, Plus } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils.ts"
 
 type CounterProps = {
   label: string
