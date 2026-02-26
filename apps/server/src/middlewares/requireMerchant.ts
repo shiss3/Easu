@@ -6,7 +6,7 @@ export interface MerchantRequest extends Request {
     managerRole: string;
 }
 
-/** 解析 B 端 token，校验为商户角色，并将 managerId、role 挂到 req 上 */
+// 解析B端 token，校验为商户角色，并将managerId、role挂到req上
 export function requireMerchant(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

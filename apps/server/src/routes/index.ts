@@ -28,7 +28,7 @@ router.get('/calendar/holidays', getHolidayList);
 // 定位逆地理：GET /location/regeo
 router.get('/location/regeo', getRegeoLocation);
 // AI 聊天：POST /chat
-//router.post('/chat', postChat);
+router.post('/chat', postChat);
 // C 端认证：POST /auth/*
 router.use('/auth', authRoutes);
 

@@ -11,7 +11,7 @@ enum ReviewProcess {
     DRAFT = 'DRAFT',
 }
 
-/** 创建酒店请求体（与前端 CreateHotelPayload 一致） */
+// 创建酒店请求体
 export interface CreateHotelBody {
     name: string;
     address: string;
@@ -31,7 +31,7 @@ export interface CreateHotelBody {
     }[];
 }
 
-/** 单张图片上传：上传至阿里云 OSS，返回永久地址 */
+// 单张图片上传：上传至阿里云 OSS，返回永久地址
 export const uploadImage = async (req: ManagerRequest, res: Response) => {
     try {
         const file = req.file;
@@ -46,7 +46,7 @@ export const uploadImage = async (req: ManagerRequest, res: Response) => {
     }
 };
 
-/** 商户创建酒店：仅商户可创建，写入 ownerId，创建酒店+房型+库存，图片字段存 OSS 永久地址 */
+// 商户创建酒店：仅商户可创建，写入 ownerId，创建酒店+房型+库存，图片字段存 OSS 永久地址
 export const createMerchantHotel = async (req: ManagerRequest, res: Response) => {
     try {
         if (req.managerRole !== 'MERCHANT') {
@@ -145,7 +145,7 @@ export const createMerchantHotel = async (req: ManagerRequest, res: Response) =>
     }
 };
 
-/** 获取单酒店详情（编辑用）：商户仅能查自己的，管理员可查任意；含房型及首日库存 */
+// 获取单酒店详情（编辑用）：商户仅能查自己的，管理员可查任意；含房型及首日库存
 export const getHotelDetailForEdit = async (req: ManagerRequest, res: Response) => {
     try {
         const idParam = req.params.id;
@@ -208,7 +208,7 @@ export const getHotelDetailForEdit = async (req: ManagerRequest, res: Response) 
     }
 };
 
-/** 统一更新接口：管理员传 action+adminNote 仅更新审核；商户传完整酒店信息则更新并置为待审核 */
+// 统一更新接口：管理员传 action+adminNote 仅更新审核；商户传完整酒店信息则更新并置为待审核
 export const updateHotel = async (req: ManagerRequest, res: Response) => {
     try {
         const idParam = req.params.id;
@@ -334,7 +334,7 @@ export const updateHotel = async (req: ManagerRequest, res: Response) => {
     }
 };
 
-/** 酒店列表：商户看自己的，管理员看全部；支持按名称、审核状态、在线状态筛选 */
+// 酒店列表：商户看自己的，管理员看全部；支持按名称、审核状态、在线状态筛选
 export const getHotelList = async (req: ManagerRequest, res: Response) => {
     try {
         const { managerRole: role, managerId } = req;
@@ -390,7 +390,7 @@ export const getHotelList = async (req: ManagerRequest, res: Response) => {
     }
 };
 
-/** 工作台统计：商户返回名下在线/审核中/被拒绝数，管理员返回商店总数/待审核数 */
+// 工作台统计：商户返回名下在线/审核中/被拒绝数，管理员返回商店总数/待审核数
 export const getDashboardStats = async (req: ManagerRequest, res: Response) => {
     try {
         const { managerRole: role, managerId } = req;
@@ -423,7 +423,7 @@ export const getDashboardStats = async (req: ManagerRequest, res: Response) => {
     }
 };
 
-/** 管理员审核：通过或拒绝 */
+// 管理员审核：通过或拒绝
 export const auditHotel = async (req: ManagerRequest, res: Response) => {
     try {
         const idParam = req.params.id;
@@ -468,7 +468,7 @@ export const auditHotel = async (req: ManagerRequest, res: Response) => {
     }
 };
 
-/** 管理员下线：仅当 status=1 且 checking=PUBLISHED 时可下线 */
+// 管理员下线：仅当 status=1 且 checking=PUBLISHED 时可下线
 export const setHotelOffline = async (req: ManagerRequest, res: Response) => {
     try {
         const idParam = req.params.id;
@@ -497,7 +497,7 @@ export const setHotelOffline = async (req: ManagerRequest, res: Response) => {
     }
 };
 
-/** 管理员上线：将 status 设为 1，并将审核状态设为 PENDING 待审核 */
+// 管理员上线：将 status 设为 1，并将审核状态设为PENDING待审核
 export const setHotelOnline = async (req: ManagerRequest, res: Response) => {
     try {
         const idParam = req.params.id;
