@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Star from 'lucide-react/dist/esm/icons/star';
-import type { HotelVo } from '@/services/hotel-search';
+import type { HotelVo } from '@/services/hotel-search.ts';
 
 export const HotelCard = ({ data }: { data: HotelVo }) => {
     const navigate = useNavigate();
@@ -70,7 +70,7 @@ export const HotelCard = ({ data }: { data: HotelVo }) => {
                     ) : (
                         <div className="text-red-500">
                             <span className="text-xs">¥</span>
-                            <span className="text-xl font-bold">{data.minPrice / 100}</span>
+                            <span className="text-xl font-bold">{data.minPrice}</span>
                             <span className="text-xs text-gray-400 ml-1">起</span>
                         </div>
                     )}

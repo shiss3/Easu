@@ -14,8 +14,8 @@ import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import type { HotelVo } from '@/services/hotel-search';
 import { useAiChatStore, safeGenerateId, type ChatMessage, type ChatMode } from '@/store/aiChatStore';
 
-const ModelSelectorModal = lazy(() => import('@/components/ModelSelectorModal'));
-const HistoryDrawer = lazy(() => import('@/components/HistoryDrawer'));
+const ModelSelectorModal = lazy(() => import('@/components/Ai/ModelSelectorModal.tsx'));
+const HistoryDrawer = lazy(() => import('@/components/Ai/HistoryDrawer.tsx'));
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
@@ -84,7 +84,7 @@ const AIAssistantPage = () => {
             await fetchEventSource(`${API_BASE}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: payloadMessages }),
+                body: JSON.stringify({ messages: payloadMessages, model: chatMode }),
                 signal: ctrl.signal,
                 openWhenHidden: true,
 
@@ -131,7 +131,7 @@ const AIAssistantPage = () => {
         } finally {
             setIsGenerating(false);
         }
-    }, [inputValue, isGenerating, activeSessionId, addMessage]);
+    }, [inputValue, isGenerating, activeSessionId, addMessage, chatMode]);
 
     useEffect(() => {
         const promptFromUrl = searchParams.get('prompt');

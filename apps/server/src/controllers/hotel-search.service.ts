@@ -449,6 +449,8 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
         }
     }
 
+    const toYuan = (fen: number) => Math.round(fen / 100);
+
     const formatRow = (row: RawHotelRow, isFallback: boolean): HotelVo => ({
         id: Number(row.id),
         name: row.name,
@@ -460,7 +462,7 @@ export async function executeHotelSearch(rawParams: unknown): Promise<HotelSearc
         score: Number(row.score),
         star: Number(row.star),
         reviewCount: Number(row.review_count),
-        minPrice: Number(row.min_price),
+        minPrice: toYuan(Number(row.min_price)),
         isFallback,
         soldOut: isFallback ? Boolean(row.sold_out) : false,
     });

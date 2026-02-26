@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
-import Banner from '@/components/Home/Banner';
+import Banner from '@/components/Banner.tsx';
 import GuestSelector from '@/components/GuestSelector';
 import { useBanners, useGeoLocation } from '@/hooks/useHomeData';
 import { useIsLocationMode, useNights, useSearchStore } from '@/store/searchStore';
 
 const Calendar = lazy(() => import('@/components/Calendar'));
-const CitySelector = lazy(() => import('@/components/Home/CitySelector'));
-const PriceStarSelector = lazy(() => import('@/components/Home/PriceStarSelector'));
+const CitySelector = lazy(() => import('@/components/CitySelector.tsx'));
+const PriceStarSelector = lazy(() => import('@/components/PriceStarSelector.tsx'));
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 const QUICK_TAGS = ['近地铁', '免费停车', '行李寄存', '情侣主题', '儿童乐园', '电竞椅'];

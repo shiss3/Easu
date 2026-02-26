@@ -310,12 +310,15 @@ export const postChat = async (req: Request, res: Response) => {
         writeSseEvent(res, 'done', {});
         res.end();
     } catch (error) {
-        const err = error as { status?: number };
+        console.error('Chat SSE error:', error);
+        const err = error as { status?: number; message?: string };
         const status = err.status;
         let message = '服务暂时不可用，请稍后重试';
 
         if (status === 401) {
             message = 'AI 服务认证失败，请检查服务配置';
+        } else if (status === 404) {
+            message = 'AI 模型端点不可用，请联系管理员检查配置';
         } else if (status === 429) {
             message = '请求过于频繁，请稍后再试';
         }
