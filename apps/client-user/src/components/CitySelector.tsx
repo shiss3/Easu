@@ -8,12 +8,12 @@ import Search from 'lucide-react/dist/esm/icons/search';
 import Building2 from 'lucide-react/dist/esm/icons/building-2';
 import X from 'lucide-react/dist/esm/icons/x';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
-import { cn } from '@/lib/utils';
-import { useCityList } from '@/hooks/useHomeData';
-import { useSearchSuggestions } from '@/hooks/useSearchSuggestions';
-import type { SuggestionItem } from '@/services/hotel-search';
-import type { Coords, LocateStatus } from '@/store/searchStore';
-import { useSearchStore } from '@/store/searchStore';
+import { cn } from '@/lib/utils.ts';
+import { useCityList } from '@/hooks/useHomeData.ts';
+import { useSearchSuggestions } from '@/hooks/useSearchSuggestions.ts';
+import type { SuggestionItem } from '@/services/hotel-search.ts';
+import type { Coords, LocateStatus } from '@/store/searchStore.ts';
+import { useSearchStore } from '@/store/searchStore.ts';
 
 export interface CitySelectResult {
     city: string;

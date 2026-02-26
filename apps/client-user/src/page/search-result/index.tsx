@@ -10,7 +10,7 @@ import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import MapPin from 'lucide-react/dist/esm/icons/map-pin';
 import X from 'lucide-react/dist/esm/icons/x';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
-import type { SortOption } from '@/components/SortSelector';
+import type { SortOption } from '@/components/SearchResult/SortSelector.tsx';
 import {
     DEFAULT_GUEST_SELECTION,
     GUEST_SELECTION_STORAGE_KEY,
@@ -21,13 +21,13 @@ import GuestSelectorComponent from '@/components/GuestSelector';
 import { useGeoLocation } from '@/hooks/useHomeData';
 import { useSearchStore, type DateRange, type DateString } from '@/store/searchStore';
 import { useHotelSearch } from '@/hooks/useHotelSearch';
-import { HotelCard } from '@/components/HotelCard';
+import { HotelCard } from '@/components/SearchResult/HotelCard.tsx';
 
-const CitySelector = lazy(() => import('@/components/Home/CitySelector'));
+const CitySelector = lazy(() => import('@/components/CitySelector.tsx'));
 const Calendar = lazy(() => import('@/components/Calendar'));
-const PriceStarSelector = lazy(() => import('@/components/Home/PriceStarSelector'));
-const SortSelector = lazy(() => import('@/components/SortSelector'));
-const FilterSelector = lazy(() => import('@/components/FilterSelector'));
+const PriceStarSelector = lazy(() => import('@/components/PriceStarSelector.tsx'));
+const SortSelector = lazy(() => import('@/components/SearchResult/SortSelector.tsx'));
+const FilterSelector = lazy(() => import('@/components/SearchResult/FilterSelector.tsx'));
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 const LAZY_FALLBACK = null

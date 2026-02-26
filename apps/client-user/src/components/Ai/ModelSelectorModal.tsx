@@ -3,7 +3,7 @@ import Check from 'lucide-react/dist/esm/icons/check';
 import MessageCircle from 'lucide-react/dist/esm/icons/message-circle';
 import Brain from 'lucide-react/dist/esm/icons/brain';
 import X from 'lucide-react/dist/esm/icons/x';
-import type { ChatMode } from '@/store/aiChatStore';
+import type { ChatMode } from '@/store/aiChatStore.ts';
 
 interface ModelSelectorModalProps {
     isOpen: boolean;

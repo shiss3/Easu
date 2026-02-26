@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import X from 'lucide-react/dist/esm/icons/x';
 import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
-import { useAiChatStore } from '@/store/aiChatStore';
+import { useAiChatStore } from '@/store/aiChatStore.ts';
 
 interface HistoryDrawerProps {
     isOpen: boolean;

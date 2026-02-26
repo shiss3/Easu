@@ -6,7 +6,7 @@ import Check from 'lucide-react/dist/esm/icons/check';
 import X from 'lucide-react/dist/esm/icons/x';
 import { toast } from 'sonner';
 import type { RoomTypeVo } from '@/services/hotel-detail.ts';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button.tsx';
 
 interface GuestInfo {
     rooms: number;

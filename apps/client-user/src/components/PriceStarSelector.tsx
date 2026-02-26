@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import X from 'lucide-react/dist/esm/icons/x'
-import { cn } from '@/lib/utils'
-import { useSearchStore } from '@/store/searchStore'
+import { cn } from '@/lib/utils.ts'
+import { useSearchStore } from '@/store/searchStore.ts'
 
 /* ------------------------------------------------------------------ */
 /*  Types & Constants                                                  */
