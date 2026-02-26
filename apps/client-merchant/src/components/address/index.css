@@ -1,0 +1,23 @@
+.address-region {
+  margin-bottom: 8px;
+}
+
+.address-region-label {
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.address-region-required {
+  color: #ff4d4f;
+  margin-right: 4px;
+}
+
+.address-region-row {
+  margin-bottom: 16px;
+}
+
+.address-input-disabled {
+  background: #f5f5f5 !important;
+  color: rgba(0, 0, 0, 0.88);
+}

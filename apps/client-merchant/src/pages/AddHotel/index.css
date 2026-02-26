@@ -1,0 +1,176 @@
+/* 与项目品牌色一致 */
+:root {
+  --add-hotel-brand: #027cc5;
+  --add-hotel-text: #333;
+  --add-hotel-text-secondary: #666;
+  --add-hotel-border: #d9d9d9;
+}
+
+.add-hotel-tabs-wrap {
+  background: #fff;
+  padding: 0 16px;
+  margin: 0 -16px 16px -16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.add-hotel-tabs.ant-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+.add-hotel-tabs.ant-tabs .ant-tabs-tab {
+  padding: 12px 0;
+}
+
+.add-hotel-tabs.ant-tabs .ant-tabs-ink-bar {
+  background: var(--add-hotel-brand);
+}
+
+.add-hotel-tabs.ant-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--add-hotel-brand);
+}
+
+.add-hotel-tabs.ant-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn {
+  color: var(--add-hotel-brand);
+}
+
+.add-hotel-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  min-height: 400px;
+}
+
+.add-hotel-card {
+  margin-bottom: 24px;
+}
+
+.add-hotel-card:last-child {
+  margin-bottom: 0;
+}
+
+.add-hotel-card .ant-card-head {
+  font-weight: 600;
+  color: var(--add-hotel-text);
+}
+
+.add-hotel-placeholder {
+  color: var(--add-hotel-text-secondary);
+  margin: 0;
+  padding: 24px 0;
+}
+
+.add-hotel-form-row .ant-form-item {
+  margin-bottom: 16px;
+}
+
+/* 星级选择 */
+.add-hotel-star-radio {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.add-hotel-star-radio .ant-radio-wrapper {
+  margin-inline-end: 0;
+}
+
+.add-hotel-star-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: -8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #e6f4ff;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--add-hotel-text-secondary);
+  line-height: 1.5;
+}
+
+.add-hotel-star-hint .anticon {
+  color: var(--add-hotel-brand);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.add-hotel-upload-desc {
+  color: var(--add-hotel-text-secondary);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.add-hotel-upload-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--add-hotel-text-secondary);
+}
+
+.add-hotel-upload-btn .anticon {
+  font-size: 24px;
+}
+
+/* 右侧提示区 */
+.add-hotel-hints {
+  position: sticky;
+  top: 16px;
+}
+
+.add-hotel-hint-block {
+  background: #f8fbfd;
+  border: 1px solid #e8eef5;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.add-hotel-hint-block:last-child {
+  margin-bottom: 0;
+}
+
+.add-hotel-hint-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--add-hotel-brand);
+  margin-bottom: 12px;
+}
+
+.add-hotel-hint-title .anticon {
+  font-size: 16px;
+}
+
+.add-hotel-hint-list {
+  margin: 0 0 12px 0;
+  padding-left: 18px;
+  color: var(--add-hotel-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.add-hotel-hint-link {
+  color: var(--add-hotel-brand);
+  font-size: 13px;
+}
+
+.add-hotel-hint-link:hover {
+  text-decoration: underline;
+}
+
+.add-hotel-hint-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--add-hotel-text-secondary);
+  line-height: 1.5;
+}
+
+@media (max-width: 992px) {
+  .add-hotel-hints {
+    position: static;
+    margin-top: 24px;
+  }
+}

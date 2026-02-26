@@ -1,0 +1,201 @@
+/* 与登录页统一的品牌色 */
+:root {
+    --register-brand: #027cc5;
+    --register-text: #333;
+    --register-text-secondary: #666;
+    --register-border: #d9d9d9;
+}
+
+/* 与登录页一致：全屏背景图 */
+.register-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* 固定高度容器：左右同高，底部自然对齐 */
+.register-box {
+    display: flex;
+    width: 1200px;
+    height: 720px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+/* 左侧表单区：视觉主体，略宽于右侧，白底+浅色渐变 */
+.register-left {
+    width: 700px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 32px 40px 24px;
+    overflow: hidden;
+}
+
+/* Logo 与标题、副标题同一行 */
+.register-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    margin-bottom: 24px;
+}
+
+.register-logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.register-header-text {
+    min-width: 0;
+}
+
+.register-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--register-brand);
+    margin: 0 0 4px 0;
+    line-height: 1.3;
+}
+
+.register-subtitle {
+    font-size: 13px;
+    color: var(--register-text-secondary);
+    margin: 0;
+}
+
+.register-form {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.register-form .ant-form-item {
+    margin-bottom: 10px;
+}
+
+.register-form .ant-form-item-label {
+    padding-bottom: 2px;
+}
+
+.register-form .ant-form-item-label > label {
+    color: var(--register-text);
+    font-weight: 500;
+}
+
+.register-form .ant-input-affix-wrapper,
+.register-form .ant-input,
+.register-form .ant-select-selector {
+    border-radius: 6px;
+}
+
+.register-actions {
+    margin-bottom: 10px;
+}
+
+.register-actions .ant-form-item-control-input-content {
+    display: block;
+}
+
+.register-btn-primary {
+    height: 40px;
+    font-size: 15px;
+    font-weight: 500;
+    background: var(--register-brand) !important;
+    border-color: var(--register-brand) !important;
+    border-radius: 6px;
+}
+
+.register-btn-primary:hover {
+    opacity: 0.9;
+    background: var(--register-brand) !important;
+    border-color: var(--register-brand) !important;
+}
+
+.register-btn-login {
+    height: 40px;
+    font-size: 14px;
+    border-radius: 6px;
+    color: var(--register-brand);
+    border-color: var(--register-border);
+}
+
+.register-btn-login:hover {
+    color: var(--register-brand);
+    border-color: var(--register-brand);
+}
+
+.register-footer {
+    flex-shrink: 0;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.register-footer p {
+    font-size: 12px;
+    color: var(--register-text-secondary);
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+}
+
+.register-footer p:last-child {
+    margin-bottom: 0;
+}
+
+.register-link {
+    color: var(--register-brand);
+    text-decoration: none;
+}
+
+.register-link:hover {
+    text-decoration: underline;
+}
+
+/* 右侧：装饰图，cover 裁剪不拉伸，与左侧同高 */
+.register-right {
+    width: 500px;
+    flex-shrink: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+@media (max-width: 1240px) {
+    .register-box {
+        width: 100%;
+        max-width: 1200px;
+        height: 100vh;
+    }
+
+    .register-left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .register-right {
+        width: 40%;
+        min-width: 280px;
+    }
+}
+
+@media (max-width: 900px) {
+    .register-right {
+        display: none;
+    }
+
+    .register-left {
+        width: 100%;
+        padding: 32px 24px;
+    }
+}
