@@ -19,7 +19,7 @@ const HistoryDrawer = lazy(() => import('@/components/HistoryDrawer'));
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
-const QUICK_TAGS = ['南京电竞酒店', '北京能寄存行李的酒店', '上海情侣入住'];
+const QUICK_TAGS = ['南京电竞酒店', '上海情侣入住', '北京能寄存行李的酒店'];
 
 const MODE_LABELS: Record<ChatMode, string> = {
     chat: '智能搜索',
@@ -240,41 +240,43 @@ const AIAssistantPage = () => {
             </div>
 
             {/* Input Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-8 z-20 shadow-sm">
-                <div className="flex gap-3 mb-3 overflow-x-auto px-1">
-                    <button
-                        onClick={() => setIsModelOpen(true)}
-                        className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full text-xs font-medium border border-blue-100/50 hover:bg-blue-100 transition-colors"
-                    >
-                        <span>{MODE_LABELS[chatMode]}</span>
-                        <ChevronDown size={12} />
-                    </button>
-                </div>
-                <div className="relative flex items-center gap-2">
-                    <input
-                        className="flex-1 h-12 bg-slate-100 rounded-full px-5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-200 transition-shadow"
-                        placeholder="任何旅游相关问题都可以问我哦"
-                        value={inputValue}
-                        onChange={e => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        disabled={isGenerating}
-                    />
-                    {isGenerating ? (
+            <div className="fixed bottom-0 left-0 right-0 bg-white p-4 pb-8 z-20">
+                <div className="rounded-2xl border border-gray-300 bg-white px-3 py-3 shadow-sm">
+                    <div className="flex gap-3 mb-2 overflow-x-auto">
                         <button
-                            onClick={handleStop}
-                            className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-red-500 text-white shadow-sm active:scale-95 transition-transform"
+                            onClick={() => setIsModelOpen(true)}
+                            className="flex items-center gap-1.5 bg-blue-500 text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-blue-700 transition-colors"
                         >
-                            <Square size={16} fill="currentColor" />
+                            <span>{MODE_LABELS[chatMode]}</span>
+                            <ChevronDown size={12} />
                         </button>
-                    ) : (
-                        <button
-                            onClick={() => sendMessage()}
-                            disabled={!inputValue.trim()}
-                            className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm disabled:opacity-40 active:scale-95 transition-transform"
-                        >
-                            <Send size={18} />
-                        </button>
-                    )}
+                    </div>
+                    <div className="relative flex items-center gap-2">
+                        <input
+                            className="flex-1 h-11 bg-white rounded-full px-5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-200 transition-shadow"
+                            placeholder="任何旅游相关问题都可以问我哦"
+                            value={inputValue}
+                            onChange={e => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            disabled={isGenerating}
+                        />
+                        {isGenerating ? (
+                            <button
+                                onClick={handleStop}
+                                className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-red-500 text-white shadow-sm active:scale-95 transition-transform"
+                            >
+                                <Square size={16} fill="currentColor" />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => sendMessage()}
+                                disabled={!inputValue.trim()}
+                                className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-sm disabled:opacity-40 active:scale-95 transition-transform"
+                            >
+                                <Send size={18} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

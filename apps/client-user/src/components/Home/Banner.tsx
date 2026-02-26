@@ -123,26 +123,33 @@ export default function Banner(props: HomeBannerProps) {
 
     if (isEmpty) {
         return (
-            <div className={cn('relative h-64 w-full overflow-hidden bg-gray-100', className)}>
+            <div className={cn('relative h-64 w-full overflow-hidden bg-gray-50', className)}>
                 <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-b from-transparent via-white/60 to-white/95" />
-                <div className="absolute inset-0 flex flex-col items-center justify-center -mt-6 gap-3">
-                    <svg viewBox="0 0 120 100" className="w-24 h-24 text-gray-300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="10" y="30" width="100" height="60" rx="4" fill="currentColor" opacity="0.4" />
-                        <rect x="20" y="10" width="50" height="80" rx="3" fill="currentColor" opacity="0.6" />
-                        <rect x="28" y="22" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="44" y="22" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="28" y="38" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="44" y="38" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="28" y="54" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="44" y="54" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="33" y="72" width="20" height="18" rx="2" fill="currentColor" opacity="0.3" />
-                        <rect x="78" y="45" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="94" y="45" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="78" y="61" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <rect x="94" y="61" width="10" height="10" rx="1.5" fill="currentColor" opacity="0.25" />
-                        <polygon points="20,10 45,0 70,10" fill="currentColor" opacity="0.5" />
-                    </svg>
-                    <span className="text-gray-400 text-sm tracking-wide animate-pulse">正在为您精选本地酒店</span>
+                <div className="flex flex-col gap-2 px-3 pt-3 h-full">
+                    {[1, 2].map((i) => (
+                        <div key={i} className="flex bg-white rounded-lg overflow-hidden shadow-sm animate-pulse" style={{ height: 108 }}>
+                            <div className="w-1/3 bg-gray-200" />
+                            <div className="w-2/3 p-3 flex flex-col justify-between">
+                                <div>
+                                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                                    <div className="flex gap-0.5 mt-1.5">
+                                        {[1, 2, 3].map((j) => (
+                                            <div key={j} className="w-3 h-3 bg-gray-200 rounded-full" />
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        <div className="h-4 bg-gray-200 rounded w-12" />
+                                        <div className="h-3 bg-gray-200 rounded w-10" />
+                                    </div>
+                                    <div className="h-3 bg-gray-200 rounded w-full mt-1.5" />
+                                </div>
+                                <div className="flex justify-end">
+                                    <div className="h-6 bg-gray-200 rounded w-16" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    <div className="text-center text-gray-400 text-sm animate-pulse mt-1">正在为您精选本地酒店</div>
                 </div>
             </div>
         );

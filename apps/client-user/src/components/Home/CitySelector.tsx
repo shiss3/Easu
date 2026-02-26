@@ -602,7 +602,7 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
 
                     {/* 字母侧边栏 (仅在非搜索模式) */}
                     {!isSearching ? (
-                        <div className="fixed right-1 top-1/2 -translate-y-1/2 z-[101] flex flex-col items-center">
+                        <div className="fixed right-1 top-[60%] -translate-y-1/2 z-[101] flex flex-col items-center">
                             <button
                                 type="button"
                                 onClick={() => scrollToLetter('热门')}
