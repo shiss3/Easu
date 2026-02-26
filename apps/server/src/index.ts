@@ -13,7 +13,12 @@ const helmetMiddleware = helmet();
 const isSsePath = (path: string) => SSE_PATHS.includes(path);
 
 // 中间件
-app.use(cors()); // 允许前端跨域
+app.use(cors({
+    // 必须明确允许你的主域名和 www 域名
+    origin: ['https://easu.top', 'https://www.easu.top'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+})); // 允许前端跨域
 app.use((req, res, next) => {
     if (isSsePath(req.path)) {
         return next();
