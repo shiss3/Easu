@@ -36,6 +36,7 @@ model Hotel {
   coverImage  String // 封面
   images      String[] // 酒店外观图等
   description String? // 描述
+  star        Int      @default(0) // 星级（0:无星级，2-5分别对应相应星级
 
   tags      String[] // 标签 ['免费停车', '智能客控']
   priceDesc String? // 价格描述 '特惠一口价'
@@ -113,7 +114,15 @@ model RoomType {
   salesVolume Int      @default(0) // 销量
   sortOrder   Int      @default(0) // 排序
 
+  capacity         Int      @default(2) // 最大容纳人数
+  hasWindow        Boolean  @default(false)
+  hasBreakfast     Boolean  @default(false)
+  childrenFriendly Boolean  @default(false)
+  tags             String[] // 房型特性标签，如 "双窗房", "智能马桶"
+
   inventories RoomInventory[]
+
+  @@index([hotelId])
 }
 
 // 3. RoomInventory 表 (补全以保证关联关系成立)
@@ -128,6 +137,7 @@ model RoomInventory {
   quota Int      @default(10) // 当日库存
 
   @@unique([roomTypeId, date]) // 同一种房型在同一天只能有一条库存记录
+  @@index([date, quota])
 }
 
 model User {

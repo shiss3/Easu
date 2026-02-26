@@ -15,6 +15,7 @@ out
 .DS_Store
 .cursor
 .agents
+.trae
 # Turborepo 缓存
 .turbo
 

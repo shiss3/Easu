@@ -2,11 +2,11 @@ import { ChevronRight, X } from "lucide-react"
 import * as React from "react"
 import { createPortal } from "react-dom"
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button.tsx"
+import { cn } from "@/lib/utils.ts"
 
-import { Counter } from "./Counter"
-import { formatChildAge, GUEST_LIMITS, type GuestSelection } from "./types"
+import { Counter } from "./Counter.tsx"
+import { formatChildAge, GUEST_LIMITS, type GuestSelection } from "./types.ts"
 
 type SelectionModalProps = {
   open: boolean

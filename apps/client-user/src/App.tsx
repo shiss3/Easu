@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import MobileLayout from './layouts/MobileLayout';
 import HomePage from './page/home/';
 import SearchResultPage from './page/search-result';
 import HotelDetailPage from "@/page/hotel-detail";
@@ -12,7 +11,7 @@ function App() {
         <BrowserRouter>
             <Toaster position="top-center" richColors />
             <Routes>
-                <Route path="/" element={<MobileLayout />}>
+                <Route path="/">
                     <Route index element={<HomePage />} />
                     {/* 搜索结果页 */}
                     <Route path="search" element={<SearchResultPage />} />

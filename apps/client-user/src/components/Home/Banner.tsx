@@ -24,21 +24,8 @@ export default function Banner(props: HomeBannerProps) {
     const { items, className, autoPlayIntervalMs = DEFAULT_AUTOPLAY_MS } = props;
     const navigate = useNavigate();
 
-    const slides = useMemo<HomeBannerDto[]>(() => {
-        // 兜底：没有数据时给一个占位 Slide，避免布局塌陷
-        if (items.length > 0) return items;
-        return [
-            {
-                id: 0,
-                hotelId: 0,
-                imageUrl: '',
-                title: '精选酒店推荐',
-                subTitle: '为你挑选高评分好店',
-                linkUrl: '',
-                trackCode: null,
-            },
-        ];
-    }, [items]);
+    const slides = useMemo<HomeBannerDto[]>(() => items, [items]);
+    const isEmpty = slides.length === 0;
 
     const viewportRef = useRef<HTMLDivElement | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -134,6 +121,40 @@ export default function Banner(props: HomeBannerProps) {
         navigate(`/hotel/${item.hotelId}`);
     };
 
+    if (isEmpty) {
+        return (
+            <div className={cn('relative h-64 w-full overflow-hidden bg-gray-50', className)}>
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-b from-transparent via-white/60 to-white/95" />
+                <div className="flex flex-col gap-2 px-3 pt-3 h-full">
+                    {[1, 2].map((i) => (
+                        <div key={i} className="flex bg-white rounded-lg overflow-hidden shadow-sm animate-pulse" style={{ height: 108 }}>
+                            <div className="w-1/3 bg-gray-200" />
+                            <div className="w-2/3 p-3 flex flex-col justify-between">
+                                <div>
+                                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                                    <div className="flex gap-0.5 mt-1.5">
+                                        {[1, 2, 3].map((j) => (
+                                            <div key={j} className="w-3 h-3 bg-gray-200 rounded-full" />
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        <div className="h-4 bg-gray-200 rounded w-12" />
+                                        <div className="h-3 bg-gray-200 rounded w-10" />
+                                    </div>
+                                    <div className="h-3 bg-gray-200 rounded w-full mt-1.5" />
+                                </div>
+                                <div className="flex justify-end">
+                                    <div className="h-6 bg-gray-200 rounded w-16" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    <div className="text-center text-gray-400 text-sm animate-pulse mt-1">正在为您精选本地酒店</div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={cn('relative h-64 w-full overflow-hidden', className)} aria-roledescription="carousel">
             <div
@@ -141,7 +162,6 @@ export default function Banner(props: HomeBannerProps) {
                 className={cn(
                     'flex h-full w-full overflow-x-auto scroll-smooth',
                     'snap-x snap-mandatory',
-                    // 隐藏滚动条（兼容多数浏览器）
                     '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
                 )}
             >
@@ -156,22 +176,16 @@ export default function Banner(props: HomeBannerProps) {
                         onClick={() => handleSlideClick(item)}
                         aria-label={`Banner ${idx + 1}`}
                     >
-                        {item.imageUrl ? (
-                            <img
-                                src={item.imageUrl}
-                                alt={item.title}
-                                className="h-full w-full object-cover"
-                                loading={idx === 0 ? 'eager' : 'lazy'}
-                                decoding="async"
-                            />
-                        ) : (
-                            <div className="h-full w-full bg-gradient-to-r from-amber-700 to-orange-500" />
-                        )}
+                        <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            className="h-full w-full object-cover"
+                            loading={idx === 0 ? 'eager' : 'lazy'}
+                            decoding="async"
+                        />
 
-                        {/* 渐变遮罩：从上到下逐渐降低图片可视度（底部接近全遮住），用于与搜索卡片重叠区域的过渡 */}
                         <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-b from-black/0 via-white/60 to-white/95" />
 
-                        {/* 文案：左上角偏中间 */}
                         <div className="pointer-events-none absolute left-4 top-10 right-14">
                             <div className="text-white text-3xl font-bold leading-tight drop-shadow-sm line-clamp-1">
                                 {item.title}
@@ -186,7 +200,6 @@ export default function Banner(props: HomeBannerProps) {
                 ))}
             </div>
 
-            {/* 指示点：椭圆小图标 */}
             {slides.length > 1 ? (
                 <div className="absolute bottom-20 right-1 -translate-x-1/2 flex items-center gap-2 z-10">
                     {slides.map((_, idx) => {

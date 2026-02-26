@@ -2,6 +2,7 @@ import { httpClient } from '@/lib/http';
 
 export interface RegeoLocationData {
     city: string;
+    district?: string;
     formattedAddress?: string;
     poiName?: string;
     poiAddress?: string;
