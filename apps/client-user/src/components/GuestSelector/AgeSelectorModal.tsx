@@ -2,9 +2,9 @@ import { X } from "lucide-react"
 import * as React from "react"
 import { createPortal } from "react-dom"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils.ts"
 
-import { AGE_OPTIONS, formatChildAge, type ChildAge } from "./types"
+import { AGE_OPTIONS, formatChildAge, type ChildAge } from "./types.ts"
 
 type AgeSelectorModalProps = {
   open: boolean
