@@ -1,6 +1,6 @@
 import { Modal, Descriptions, Input, Button, Space, Card, message } from "antd";
 import { useState, useEffect } from "react";
-import { getHotelDetail, updateHotel } from "../../api/hotels";
+import { getHotelDetail, updateHotel, type HotelDetailForEdit } from "../../api/hotels";
 
 const REVIEW_LABEL: Record<string, string> = {
   PENDING: "审核中",
@@ -35,7 +35,7 @@ interface AuditHotelModalProps {
 export default function AuditHotelModal({ open, hotelId, onClose, onSuccess }: AuditHotelModalProps) {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getHotelDetail>>["data"]>(null);
+  const [detail, setDetail] = useState<HotelDetailForEdit | null>(null);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
 

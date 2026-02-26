@@ -1,18 +1,13 @@
-import { Menu } from 'antd';
-import { useMemo } from 'react';
+import { Menu, type MenuProps } from "antd";
+import { useMemo } from "react";
 import logo from "../../assets/logo.jpg";
-import icons from './iconList';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import type { RootState } from '../../store';
+import icons from "./iconList";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../store";
 import "./index.css";
 
-interface MenuItem {
-    key: string;
-    label: string;
-    icon?: React.ReactNode;
-    children?: MenuItem[];
-}
+type MenuItem = Required<MenuProps>["items"][number];
 
 function NavLeft() {
     const role = useSelector((state: RootState) => state.authSlice.managerInfo?.role);
@@ -25,7 +20,7 @@ function NavLeft() {
             { key: "/home/hotels/list", label: "酒店列表", icon: icons["UnorderedListOutlined"] },
         ];
         // 仅商户角色能够上传酒店信息
-        if (role === 'MERCHANT') {
+        if (role === "MERCHANT") {
             hotelChildren.push({
                 key: "/home/hotels/add",
                 label: "新增酒店",

@@ -152,7 +152,6 @@ function RoomDetail({ hotelForm }: RoomDetailProps) {
                       <Form.Item
                         {...field}
                         name={[field.name, "name"]}
-                        fieldKey={[field.fieldKey, "name"]}
                         label="房型名称"
                         required
                         rules={[{ required: true, message: "请输入房型名称" }]}
@@ -164,7 +163,6 @@ function RoomDetail({ hotelForm }: RoomDetailProps) {
                       <Form.Item
                         {...field}
                         name={[field.name, "price"]}
-                        fieldKey={[field.fieldKey, "price"]}
                         label="房型价格（元/晚）"
                         required
                         rules={[{ required: true, message: "请输入房型价格" }]}
@@ -181,7 +179,6 @@ function RoomDetail({ hotelForm }: RoomDetailProps) {
                   <Form.Item
                     {...field}
                     name={[field.name, "bedInfo"]}
-                    fieldKey={[field.fieldKey, "bedInfo"]}
                     label="床铺信息"
                     required
                     rules={[{ required: true, message: "请输入床铺信息" }]}
@@ -193,7 +190,6 @@ function RoomDetail({ hotelForm }: RoomDetailProps) {
                   <Form.Item
                     {...field}
                     name={[field.name, "images"]}
-                    fieldKey={[field.fieldKey, "images"]}
                     label="房型图片"
                     required
                     rules={[{ required: true, message: "请至少上传一张房型图片" }, { type: "array", min: 1, message: "请至少上传一张房型图片" }]}
@@ -205,7 +201,6 @@ function RoomDetail({ hotelForm }: RoomDetailProps) {
                   <Form.Item
                     {...field}
                     name={[field.name, "inventory"]}
-                    fieldKey={[field.fieldKey, "inventory"]}
                     label="房型库存（间数）"
                     required
                     rules={[{ required: true, message: "请输入房型库存" }]}
