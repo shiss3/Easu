@@ -19,7 +19,6 @@ export interface HotelDetailVo extends HotelVo {
     description?: string;
     images: string[];
     roomTypes: RoomTypeVo[];
-    minPrice?: number;
 }
 
 //获取酒店详情api
