@@ -38,7 +38,6 @@ model Hotel {
   coverImage  String // 封面
   images      String[] // 酒店外观图等
   description String? // 描述
-  star        Int      @default(0) // 星级（0:无星级，2-5分别对应相应星级
 
   tags      String[] // 标签 ['免费停车', '智能客控']
   priceDesc String? // 价格描述 '特惠一口价'
