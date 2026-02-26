@@ -23,12 +23,14 @@ enum ReviewProcess {
   DRAFT // 草稿（商户暂存，不提交审核）
 }
 
-// 1. Hotel 表
+// 1. HotelList 表
 model Hotel {
   id      Int    @id @default(autoincrement())
   name    String // 名称
   address String // 地址
   city    String // 城市
+
+  star Int @default(0) // 星级（0:无星级，2-5分别对应相应星级
 
   latitude  Float? // 经度
   longitude Float? // 纬度
@@ -53,7 +55,7 @@ model Hotel {
   checking  ReviewProcess @default(PENDING) // 审核进度
   adminNote String?       @db.VarChar(255) // 管理员填写的审核意见（如不通过原因
   // 关联商户
-  ownerId   Int? // 为了数据库现存数据，暂时可选不添加（开发ing）
+  ownerId   Int?          @default(1) // 为了数据库现存数据，暂时可选不添加（开发ing）
   owner     Manager?      @relation("MerchantHotels", fields: [ownerId], references: [id])
 
   createdAt DateTime @default(now())
