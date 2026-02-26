@@ -15,7 +15,10 @@ const isSsePath = (path: string) => SSE_PATHS.includes(path);
 // 中间件
 app.use(cors({
     // 必须明确允许你的主域名和 www 域名
-    origin: ['https://easu.top', 'https://www.easu.top'],
+    origin: ['https://easu.top',
+             'https://www.easu.top',
+             'https://easu-client-merchant.vercel.app'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 })); // 允许前端跨域
