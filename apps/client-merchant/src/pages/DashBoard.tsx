@@ -28,7 +28,6 @@ function DashBoard() {
   const [stats, setStats] = useState<DashboardStatsMerchant | DashboardStatsAdmin | null>(null);
 
   useEffect(() => {
-    setLoading(true);
     getDashboardStats()
       .then((res) => setStats(res.data ?? null))
       .finally(() => setLoading(false));
