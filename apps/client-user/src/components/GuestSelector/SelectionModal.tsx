@@ -138,7 +138,7 @@ export function SelectionModal({
                     请准确维护儿童年龄，以便我们为您查找最合适的房型及优惠
                   </div>
 
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 grid grid-cols-2 gap-3">
                     {Array.from({ length: value.children }, (_, i) => {
                       const age = value.childAges[i] ?? null
                       const invalid = submitted && age == null
@@ -148,16 +148,16 @@ export function SelectionModal({
                           type="button"
                           onClick={() => onOpenAgeSelector(i)}
                           className={cn(
-                            "flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-left shadow-sm ring-1 transition-colors",
+                            "flex items-center justify-between rounded-xl bg-white px-3 py-3 text-left shadow-sm ring-1 transition-colors",
                             invalid ? "ring-red-500" : "ring-gray-200 active:bg-gray-50"
                           )}
                         >
-                          <div className="text-[16px] font-medium text-gray-900">{`儿童${i + 1}`}</div>
-                          <div className="flex items-center gap-2">
-                            <div className={cn("text-[15px]", age == null ? "text-gray-400" : "text-gray-900")}>
+                          <div className="text-[15px] font-medium text-gray-900">{`儿童${i + 1}`}</div>
+                          <div className="flex items-center gap-1">
+                            <div className={cn("text-[13px]", age == null ? "text-gray-400" : "text-gray-900")}>
                               {formatChildAge(age)}
                             </div>
-                            <ChevronRight className="h-5 w-5 text-gray-300" />
+                            <ChevronRight className="h-4 w-4 text-gray-300" />
                           </div>
                         </button>
                       )

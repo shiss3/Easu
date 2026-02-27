@@ -107,7 +107,7 @@ const CityRows = ({
     );
 };
 
-/* ---------- Suggestion list items ---------- */
+/* 联想列表 */
 
 const SuggestionCityItem = ({
     item,
@@ -143,7 +143,7 @@ const SuggestionHotelItem = ({
     onNavigate: (id: number) => void;
 }) => {
     const highlighted = highlightMatch(item.name, keyword);
-    const priceYuan = item.minPrice ? Math.round(item.minPrice) : null;
+    const priceYuan = item.minPrice ? Math.round(item.minPrice / 100) : null;
 
     return (
         <button
@@ -431,7 +431,7 @@ const CitySelector = ({ visible, onClose, onSelect, initialKeyword, currentLocat
                                     value={keyword}
                                     onChange={(event) => setKeyword(event.target.value)}
                                     onKeyDown={(event) => { if (event.key === 'Enter') handleExecuteSearch(); }}
-                                    placeholder="城市/品牌/酒店/酒店设施"
+                                    placeholder="位置/品牌/酒店"
                                     className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400 pr-6"
                                 />
                                 {keyword ? (

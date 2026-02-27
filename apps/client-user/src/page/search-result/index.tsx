@@ -533,7 +533,11 @@ const SearchResultPage = () => {
                             />
                         </span>
                         <span
-                            className="flex items-center gap-0.5 cursor-pointer"
+                            className={`flex items-center gap-0.5 cursor-pointer ${
+                                filters.minPrice != null || filters.maxPrice != null || (filters.stars && filters.stars.length > 0)
+                                    ? 'text-blue-600 font-bold'
+                                    : ''
+                            }`}
                             onClick={() => {
                                 setShowSortSelector(false);
                                 setShowPriceSelector(true);
