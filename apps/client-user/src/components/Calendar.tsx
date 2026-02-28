@@ -66,7 +66,6 @@ const Calendar = ({ visible, selectedRange, mode = 'range', onConfirm, onClose }
         end: null,
     });
     const [holidays, setHolidays] = useState<HolidayDay[]>([]);
-    const [loading, setLoading] = useState(false);
     const today = useMemo(() => dayjs().startOf('day'), []);
 
     useEffect(() => {
@@ -96,14 +95,11 @@ const Calendar = ({ visible, selectedRange, mode = 'range', onConfirm, onClose }
             return;
         }
         const fetchHolidays = async () => {
-            setLoading(true);
             try {
                 const res = await getHolidaysApi();
                 setHolidays(res.data ?? []);
             } catch {
                 setHolidays([]);
-            } finally {
-                setLoading(false);
             }
         };
         void fetchHolidays();
@@ -173,96 +169,92 @@ const Calendar = ({ visible, selectedRange, mode = 'range', onConfirm, onClose }
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-2 pb-4">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-12 text-gray-400">加载中...</div>
-                    ) : (
-                        months.map((month) => {
-                            const cells = getMonthCells(month);
-                            const monthKey = month.format('YYYY-MM');
-                            return (
-                                <div key={monthKey} id={`month-${monthKey}`} className="pt-4">
-                                    <div className="px-2 text-lg font-semibold mb-2">{month.format('YYYY年M月')}</div>
-                                    <div className="grid grid-cols-7 text-center">
-                                        {cells.map((date, index) => {
-                                            if (!date) {
-                                                return <div key={`${monthKey}-${index}`} className="h-[60px]" />;
-                                            }
-                                            const dateStr = date.format(DATE_FORMAT);
-                                            const holiday = holidayMap.get(dateStr);
-                                            const isDisabled = date.isBefore(today, 'day');
-                                            const isStart = uiRange.start?.isSame(date, 'day') ?? false;
-                                            const isEnd = uiRange.end?.isSame(date, 'day') ?? false;
-                                            const isInRange =
-                                                mode === 'range' && uiRange.start && uiRange.end
-                                                    ? date.isAfter(uiRange.start, 'day') && date.isBefore(uiRange.end, 'day')
-                                                    : false;
-                                            const tag = isStart ? '入住' : isEnd ? '离店' : '';
-                                            const textColor = holiday?.isOffDay ? 'text-[#FF3333]' : 'text-gray-900';
-                                            const isWorkdayLabel = holiday?.displayLabel === '班';
+                    {months.map((month) => {
+                        const cells = getMonthCells(month);
+                        const monthKey = month.format('YYYY-MM');
+                        return (
+                            <div key={monthKey} id={`month-${monthKey}`} className="pt-4">
+                                <div className="px-2 text-lg font-semibold mb-2">{month.format('YYYY年M月')}</div>
+                                <div className="grid grid-cols-7 text-center">
+                                    {cells.map((date, index) => {
+                                        if (!date) {
+                                            return <div key={`${monthKey}-${index}`} className="h-[60px]" />;
+                                        }
+                                        const dateStr = date.format(DATE_FORMAT);
+                                        const holiday = holidayMap.get(dateStr);
+                                        const isDisabled = date.isBefore(today, 'day');
+                                        const isStart = uiRange.start?.isSame(date, 'day') ?? false;
+                                        const isEnd = uiRange.end?.isSame(date, 'day') ?? false;
+                                        const isInRange =
+                                            mode === 'range' && uiRange.start && uiRange.end
+                                                ? date.isAfter(uiRange.start, 'day') && date.isBefore(uiRange.end, 'day')
+                                                : false;
+                                        const tag = isStart ? '入住' : isEnd ? '离店' : '';
+                                        const textColor = holiday?.isOffDay ? 'text-[#FF3333]' : 'text-gray-900';
+                                        const isWorkdayLabel = holiday?.displayLabel === '班';
 
-                                            return (
-                                                <div
-                                                    key={`${dateStr}-${index}`}
+                                        return (
+                                            <div
+                                                key={`${dateStr}-${index}`}
+                                                className={cn(
+                                                    'h-[60px] flex items-center justify-center',
+                                                    isInRange && 'bg-[#D6EAFE]',
+                                                )}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    disabled={isDisabled}
+                                                    onClick={() => handleDateClick(date)}
                                                     className={cn(
-                                                        'h-[60px] flex items-center justify-center',
-                                                        isInRange && 'bg-[#D6EAFE]',
+                                                        'w-full h-full flex flex-col items-center justify-center gap-0 leading-none text-sm',
+                                                        (isStart || isEnd) && 'bg-[#0066E0] text-white rounded-md',
+                                                        isDisabled && 'text-gray-300 cursor-not-allowed',
+                                                        !isDisabled && 'cursor-pointer',
                                                     )}
                                                 >
-                                                    <button
-                                                        type="button"
-                                                        disabled={isDisabled}
-                                                        onClick={() => handleDateClick(date)}
+                                                    <span
                                                         className={cn(
-                                                            'w-full h-full flex flex-col items-center justify-center gap-0 leading-none text-sm',
-                                                            (isStart || isEnd) && 'bg-[#0066E0] text-white rounded-md',
-                                                            isDisabled && 'text-gray-300 cursor-not-allowed',
-                                                            !isDisabled && 'cursor-pointer',
+                                                            'text-[9px] h-3 origin-center font-medium -my-[1px]',
+                                                            (isStart || isEnd)
+                                                                ? 'text-white'
+                                                                : holiday?.isOffDay
+                                                                  ? 'text-[#FF3333]'
+                                                                  : 'text-gray-900',
+                                                            isWorkdayLabel &&
+                                                                !(isStart || isEnd) &&
+                                                                'px-0.5 rounded-sm text-gray-600',
                                                         )}
                                                     >
-                                                        <span
-                                                            className={cn(
-                                                                'text-[9px] h-3 origin-center font-medium -my-[1px]',
-                                                                (isStart || isEnd)
-                                                                    ? 'text-white'
-                                                                    : holiday?.isOffDay
-                                                                      ? 'text-[#FF3333]'
-                                                                      : 'text-gray-900',
-                                                                isWorkdayLabel &&
-                                                                    !(isStart || isEnd) &&
-                                                                    'px-0.5 rounded-sm text-gray-600',
-                                                            )}
-                                                        >
-                                                            {holiday?.displayLabel ?? ''}
-                                                        </span>
-                                                        <span
-                                                            className={cn(
-                                                                'text-base font-medium -my-[1px]',
-                                                                (isStart || isEnd)
-                                                                    ? 'text-white'
-                                                                    : isDisabled
-                                                                      ? 'text-gray-300'
-                                                                      : textColor,
-                                                            )}
-                                                        >
-                                                            {date.date()}
-                                                        </span>
-                                                        <span
-                                                            className={cn(
-                                                                'text-[9px] h-3 scale-90 origin-center font-medium -my-[1px]',
-                                                                (isStart || isEnd) ? 'text-white' : 'invisible',
-                                                            )}
-                                                        >
-                                                            {tag || '-'}
-                                                        </span>
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                        {holiday?.displayLabel ?? ''}
+                                                    </span>
+                                                    <span
+                                                        className={cn(
+                                                            'text-base font-medium -my-[1px]',
+                                                            (isStart || isEnd)
+                                                                ? 'text-white'
+                                                                : isDisabled
+                                                                  ? 'text-gray-300'
+                                                                  : textColor,
+                                                        )}
+                                                    >
+                                                        {date.date()}
+                                                    </span>
+                                                    <span
+                                                        className={cn(
+                                                            'text-[9px] h-3 scale-90 origin-center font-medium -my-[1px]',
+                                                            (isStart || isEnd) ? 'text-white' : 'invisible',
+                                                        )}
+                                                    >
+                                                        {tag || '-'}
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            );
-                        })
-                    )}
+                            </div>
+                        );
+                    })}
                 </div>
 
                 <div className="border-t border-gray-100 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">

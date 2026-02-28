@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useRef, useEffect, useCallback, lazy, Suspense, memo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Send from 'lucide-react/dist/esm/icons/send';
@@ -11,8 +12,15 @@ import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import MessageSquarePlus from 'lucide-react/dist/esm/icons/message-square-plus';
 import History from 'lucide-react/dist/esm/icons/history';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import type { HotelVo } from '@/services/hotel-search';
-import { useAiChatStore, safeGenerateId, type ChatMessage, type ChatMode } from '@/store/aiChatStore';
+import {
+    useAiChatStore,
+    safeGenerateId,
+    type ChatMessage,
+    type ChatMode,
+    type ProcessStep,
+} from '@/store/aiChatStore';
 
 const ModelSelectorModal = lazy(() => import('@/components/Ai/ModelSelectorModal.tsx'));
 const HistoryDrawer = lazy(() => import('@/components/Ai/HistoryDrawer.tsx'));
@@ -26,6 +34,8 @@ const MODE_LABELS: Record<ChatMode, string> = {
     reasoner: '深度思考',
 };
 
+const scrollPositionCache = new Map<string, number>();
+
 const AIAssistantPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -36,24 +46,57 @@ const AIAssistantPage = () => {
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const autoSentRef = useRef(false);
+    const isGeneratingRef = useRef(false);
 
     const activeSessionId = useAiChatStore(state => state.activeSessionId);
-    const rawMessages = useAiChatStore(state => state.sessions[state.activeSessionId]?.messages) ?? [];
+    const messageIds = useAiChatStore(
+        useShallow(state => {
+            const session = state.sessions[state.activeSessionId];
+            return session ? session.messages.map(m => m.id) : [];
+        })
+    );
     const addMessage = useAiChatStore(state => state.addMessage);
     const validateSession = useAiChatStore(state => state.validateSession);
     const chatMode = useAiChatStore(state => state.chatMode);
     const setChatMode = useAiChatStore(state => state.setChatMode);
 
-    const isEmpty = rawMessages.length === 0;
+    const isEmpty = messageIds.length === 0;
+
+    useEffect(() => {
+        isGeneratingRef.current = isGenerating;
+    }, [isGenerating]);
 
     useEffect(() => {
         validateSession();
     }, [validateSession]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [rawMessages]);
+        const cached = scrollPositionCache.get(activeSessionId);
+        if (cached != null && scrollContainerRef.current) {
+            requestAnimationFrame(() => {
+                scrollContainerRef.current!.scrollTop = cached;
+            });
+        }
+
+        return () => {
+            if (scrollContainerRef.current) {
+                scrollPositionCache.set(activeSessionId, scrollContainerRef.current.scrollTop);
+            }
+        };
+    }, [activeSessionId]);
+
+    useEffect(() => {
+        return useAiChatStore.subscribe((state, prevState) => {
+            if (!isGeneratingRef.current) return;
+            const updatedAt = state.sessions[state.activeSessionId]?.updatedAt;
+            const prevUpdatedAt = prevState.sessions[prevState.activeSessionId]?.updatedAt;
+            if (updatedAt !== prevUpdatedAt || state.activeSessionId !== prevState.activeSessionId) {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    }, []);
 
     useEffect(() => {
         return () => { abortControllerRef.current?.abort(); };
@@ -100,10 +143,16 @@ const AIAssistantPage = () => {
                         } else {
                             append(assistantId, { content: data.text as string });
                         }
-                    } else if (ev.event === 'tool_status') {
-                        append(assistantId, { toolStatus: '🔍 正在为您检索酒店...' });
+                    } else if (ev.event === 'structured_reasoning_step') {
+                        append(assistantId, {
+                            structuredReasoningStep: data.text as string,
+                        });
+                    } else if (ev.event === 'process_step') {
+                        append(assistantId, {
+                            processStep: data as unknown as ProcessStep,
+                        });
                     } else if (ev.event === 'tool_data') {
-                        append(assistantId, { hotels: data.hotels as HotelVo[], toolStatus: '' });
+                        append(assistantId, { hotels: data.hotels as HotelVo[] });
                     } else if (ev.event === 'error') {
                         const current = useAiChatStore.getState().sessions[activeSessionId]?.messages
                             .find(m => m.id === assistantId);
@@ -185,7 +234,7 @@ const AIAssistantPage = () => {
             </div>
 
             {/* Messages / Empty State */}
-            <div className="flex-1 overflow-y-auto px-4 pb-44 z-10">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 pb-44 z-10">
                 {isEmpty ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <Sparkles size={40} className="text-blue-500/60 mb-4" />
@@ -206,33 +255,12 @@ const AIAssistantPage = () => {
                     </div>
                 ) : (
                     <>
-                        {rawMessages.map(msg => (
-                            <div key={msg.id} className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                {msg.role === 'user' ? (
-                                    <div className="max-w-[80%] bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-br-sm text-sm whitespace-pre-wrap shadow-sm">
-                                        {msg.content}
-                                    </div>
-                                ) : (
-                                    <div className="max-w-[90%] space-y-2">
-                                        <ReasoningBlock reasoning={msg.reasoning} />
-                                        {msg.toolStatus && <ToolStatusBubble text={msg.toolStatus} />}
-                                        {msg.content && (
-                                            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm text-sm text-slate-800 whitespace-pre-wrap shadow-sm leading-relaxed border border-slate-100">
-                                                {renderInterlacedContent(msg.content, msg.hotels, navigate)}
-                                            </div>
-                                        )}
-                                        {!msg.content && !msg.toolStatus && !msg.hotels?.length && !msg.reasoning && (
-                                            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm border border-slate-100">
-                                                <span className="inline-flex gap-1">
-                                                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
-                                                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
-                                                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:300ms]" />
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                        {messageIds.map(id => (
+                            <SmartMessageItem
+                                key={id}
+                                id={id}
+                                activeSessionId={activeSessionId}
+                            />
                         ))}
                         <div ref={messagesEndRef} />
                     </>
@@ -301,40 +329,103 @@ const AIAssistantPage = () => {
     );
 };
 
-/* ── Sub-components ──────────────────────────────────────────────────── */
+/* ── Smart Message Item (memo'd, self-subscribing) ───────────────────── */
 
-function ReasoningBlock({ reasoning }: { reasoning?: string }) {
-    const [expanded, setExpanded] = useState(false);
+const SmartMessageItem = memo(({ id, activeSessionId }: { id: string; activeSessionId: string }) => {
+    const navigate = useNavigate();
+    const msg = useAiChatStore(state => {
+        const session = state.sessions[activeSessionId];
+        return session?.messages.find(m => m.id === id);
+    });
 
-    if (!reasoning) return null;
+    if (!msg) return null;
 
     return (
-        <div className="bg-slate-100/80 rounded-xl px-3 py-2 text-xs text-slate-500 border border-slate-200/60">
-            <button
-                onClick={() => setExpanded(v => !v)}
-                className="flex items-center gap-1 font-medium text-slate-500 w-full"
-            >
-                <Brain size={12} className="text-blue-500" />
-                <span>思考过程</span>
-                <ChevronDown size={14} className={`ml-auto transition-transform ${expanded ? 'rotate-180' : ''}`} />
-            </button>
-            {expanded && (
-                <div className="mt-2 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
-                    {reasoning}
+        <div className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {msg.role === 'user' ? (
+                <div className="max-w-[80%] bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-br-sm text-sm whitespace-pre-wrap shadow-sm">
+                    {msg.content}
+                </div>
+            ) : (
+                <div className="max-w-[90%] space-y-2">
+                    <StructuredReasoningBlock steps={msg.structuredReasoning} />
+                    <ProcessStepsList steps={msg.processSteps} />
+                    {msg.content && (
+                        <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm text-sm text-slate-800 whitespace-pre-wrap shadow-sm leading-relaxed border border-slate-100">
+                            {renderInterlacedContent(msg.content, msg.hotels, navigate)}
+                        </div>
+                    )}
+                    {!msg.content && !msg.processSteps?.length && !msg.hotels?.length && !msg.structuredReasoning?.length && (
+                        <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm border border-slate-100">
+                            <span className="inline-flex gap-1">
+                                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
+                                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
+                                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:300ms]" />
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
-}
+});
+SmartMessageItem.displayName = 'SmartMessageItem';
 
-function ToolStatusBubble({ text }: { text: string }) {
+/* ── Sub-components ──────────────────────────────────────────────────── */
+
+const StructuredReasoningBlock = memo(({ steps }: { steps?: string[] }) => {
+    const [expanded, setExpanded] = useState(true);
+
+    if (!steps || steps.length === 0) return null;
+
     return (
-        <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-xs font-medium">
-            <Loader2 size={14} className="animate-spin" />
-            {text}
+        <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-xs text-slate-600 border border-slate-200/60">
+            <button
+                onClick={() => setExpanded(v => !v)}
+                className="flex items-center gap-1.5 font-medium text-slate-500 w-full"
+            >
+                <Brain size={12} className="text-blue-500" />
+                <span>思考过程</span>
+                <ChevronDown size={14} className={`ml-auto transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+            {expanded && (
+                <ul className="mt-2 space-y-1.5 pl-0.5">
+                    {steps.map((step, i) => (
+                        <li key={i} className="flex items-start gap-2 leading-relaxed">
+                            <span className="shrink-0 w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-semibold mt-0.5">
+                                {i + 1}
+                            </span>
+                            <span>{step}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
-}
+});
+StructuredReasoningBlock.displayName = 'StructuredReasoningBlock';
+
+const ProcessStepsList = memo(({ steps }: { steps?: ProcessStep[] }) => {
+    if (!steps || steps.length === 0) return null;
+
+    return (
+        <div className="space-y-1.5 py-1">
+            {steps.map(step => (
+                <div key={step.id} className="flex items-center gap-2 text-xs">
+                    {step.status === 'loading' ? (
+                        <Loader2 size={14} className="text-blue-500 animate-spin shrink-0" />
+                    ) : (
+                        <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                    )}
+                    <span className={step.status === 'loading' ? 'text-blue-600 font-medium' : 'text-slate-500'}>
+                        {step.text}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+});
+ProcessStepsList.displayName = 'ProcessStepsList';
 
 function InlineHotelCard({ hotel, onNavigate }: { hotel: HotelVo; onNavigate: () => void }) {
     return (

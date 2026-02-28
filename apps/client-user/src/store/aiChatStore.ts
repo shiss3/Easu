@@ -4,6 +4,12 @@ import type { HotelVo } from '@/services/hotel-search';
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 
+export interface ProcessStep {
+    id: string;
+    text: string;
+    status: 'loading' | 'success';
+}
+
 export interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
@@ -11,6 +17,8 @@ export interface ChatMessage {
     reasoning?: string;
     toolStatus?: string;
     hotels?: HotelVo[];
+    structuredReasoning?: string[];
+    processSteps?: ProcessStep[];
 }
 
 export type ChatMode = 'chat' | 'reasoner';
@@ -37,7 +45,13 @@ interface AiChatActions {
     switchSession: (id: string) => void;
     setChatMode: (mode: ChatMode) => void;
     addMessage: (message: ChatMessage) => void;
-    appendAssistantContent: (messageId: string, delta: Partial<ChatMessage>) => void;
+    appendAssistantContent: (
+        messageId: string,
+        delta: Partial<ChatMessage> & {
+            processStep?: ProcessStep;
+            structuredReasoningStep?: string;
+        },
+    ) => void;
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
@@ -77,6 +91,15 @@ function readOrCreateSessionId(): string {
     const fresh = safeGenerateId();
     sessionStorage.setItem(SESSION_POINTER_KEY, fresh);
     return fresh;
+}
+
+function upsertProcessStep(steps: ProcessStep[] | undefined, incoming: ProcessStep): ProcessStep[] {
+    const prev = steps ?? [];
+    const idx = prev.findIndex(s => s.id === incoming.id);
+    if (idx === -1) return [...prev, incoming];
+    const copy = [...prev];
+    copy[idx] = { ...copy[idx], ...incoming };
+    return copy;
 }
 
 /* ── Store ───────────────────────────────────────────────────────────── */
@@ -168,6 +191,7 @@ export const useAiChatStore = create<AiChatState & AiChatActions>()(
                     if (msgIndex === -1) return state;
 
                     const target = session.messages[msgIndex];
+
                     const updated: ChatMessage = {
                         ...target,
                         content: delta.content !== undefined
@@ -182,6 +206,14 @@ export const useAiChatStore = create<AiChatState & AiChatActions>()(
                         hotels: delta.hotels !== undefined
                             ? delta.hotels
                             : target.hotels,
+                        structuredReasoning: delta.structuredReasoningStep
+                            ? [...(target.structuredReasoning ?? []), delta.structuredReasoningStep]
+                            : delta.structuredReasoning !== undefined
+                                ? delta.structuredReasoning
+                                : target.structuredReasoning,
+                        processSteps: delta.processStep
+                            ? upsertProcessStep(target.processSteps, delta.processStep)
+                            : target.processSteps,
                     };
 
                     const newMessages = [...session.messages];
