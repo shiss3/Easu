@@ -13,7 +13,10 @@ const helmetMiddleware = helmet();
 const isSsePath = (path: string) => SSE_PATHS.includes(path);
 
 // 中间件
-app.use(cors()); // 允许前端跨域
+app.use(cors({
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+})); // 允许前端跨域，显式包含 PATCH（B 端审核酒店等接口需要）
 app.use((req, res, next) => {
     if (isSsePath(req.path)) {
         return next();
