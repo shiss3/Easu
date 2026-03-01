@@ -12,7 +12,7 @@ export type GuestSelection = {
 export const GUEST_LIMITS = {
   rooms: { min: 1, max: 10 },
   adults: { min: 1, max: 300 },
-  children: { min: 0, max: 30 },
+  children: { min: 0, max: 4 },
 } as const
 
 export const DEFAULT_GUEST_SELECTION: GuestSelection = {

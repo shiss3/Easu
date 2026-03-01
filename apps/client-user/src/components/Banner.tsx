@@ -123,33 +123,27 @@ export default function Banner(props: HomeBannerProps) {
 
     if (isEmpty) {
         return (
-            <div className={cn('relative h-64 w-full overflow-hidden bg-gray-50', className)}>
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-b from-transparent via-white/60 to-white/95" />
-                <div className="flex flex-col gap-2 px-3 pt-3 h-full">
-                    {[1, 2].map((i) => (
-                        <div key={i} className="flex bg-white rounded-lg overflow-hidden shadow-sm animate-pulse" style={{ height: 108 }}>
-                            <div className="w-1/3 bg-gray-200" />
-                            <div className="w-2/3 p-3 flex flex-col justify-between">
-                                <div>
-                                    <div className="h-4 bg-gray-200 rounded w-3/4" />
-                                    <div className="flex gap-0.5 mt-1.5">
-                                        {[1, 2, 3].map((j) => (
-                                            <div key={j} className="w-3 h-3 bg-gray-200 rounded-full" />
-                                        ))}
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                        <div className="h-4 bg-gray-200 rounded w-12" />
-                                        <div className="h-3 bg-gray-200 rounded w-10" />
-                                    </div>
-                                    <div className="h-3 bg-gray-200 rounded w-full mt-1.5" />
-                                </div>
-                                <div className="flex justify-end">
-                                    <div className="h-6 bg-gray-200 rounded w-16" />
-                                </div>
-                            </div>
-                        </div>
+            <div className={cn('relative h-64 w-full overflow-hidden bg-gray-300', className)}>
+                {/* 大图背景 */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-300 via-gray-200 to-gray-300 animate-pulse" />
+
+                {/* 底部渐变过渡 */}
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-b from-black/0 via-white/60 to-white/95" />
+
+                {/* 两行文字占位 */}
+                <div className="absolute left-4 top-10 right-14 flex flex-col gap-3">
+                    <div className="h-9 w-48 rounded-md bg-white/40 animate-pulse" />
+                    <div className="h-7 w-36 rounded-full bg-white/30 animate-pulse" />
+                </div>
+
+                {/* 左下角 4 个轮播指示器圆点 */}
+                <div className="absolute bottom-20 left-4 flex items-center gap-2">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className={cn(
+                            'h-2.5 w-2.5 rounded-full',
+                            i === 1 ? 'bg-white/80' : 'bg-white/35'
+                        )} />
                     ))}
-                    <div className="text-center text-gray-400 text-sm animate-pulse mt-1">正在为您精选本地酒店</div>
                 </div>
             </div>
         );

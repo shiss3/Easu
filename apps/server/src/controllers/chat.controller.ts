@@ -73,8 +73,8 @@ const SYSTEM_PROMPT = `你是 Easu 酒店预订平台的智能助手，名字叫
 
 5. 查无结果时的谈判策略：
 - 如果调用 search_hotels 工具后返回了空数据，说明用户的条件（如价格、特定设施叠加）过于严苛。
-- 你必须直接、坦诚地告诉用户：“抱歉，没有找到完全满足您所有条件的酒店”。
-- 紧接着，主动提出【放宽条件】的建议。例如：“如果您愿意将预算提高到 600 元，或者取消必须带健身房的要求，我可以为您重新检索。您看需要调整哪个条件？”
+- 你必须直接、坦诚地告诉用户："抱歉，没有找到完全满足您所有条件的酒店"。
+- 紧接着，主动提出【放宽条件】的建议。例如："如果您愿意将预算提高到 600 元，或者取消必须带健身房的要求，我可以为您重新检索。您看需要调整哪个条件？"
 - 绝对禁止捏造不存在的酒店，也绝对禁止向用户推荐非目标城市的酒店。
 
 重要约束：
@@ -216,10 +216,6 @@ export const postChat = async (req: Request, res: Response) => {
                   }
                 | undefined;
 
-            if (delta?.reasoning_content) {
-                writeSseEvent(res, 'delta', { type: 'reasoning', text: delta.reasoning_content });
-            }
-
             if (delta?.content) {
                 writeSseEvent(res, 'delta', { type: 'content', text: delta.content });
             }
@@ -240,16 +236,51 @@ export const postChat = async (req: Request, res: Response) => {
 
         // ── Tool Execution ──────────────────────────────────────────────
         if (toolCallName === 'search_hotels') {
-            writeSseEvent(res, 'tool_status', { status: 'searching' });
-
             let toolContent: string;
 
             try {
-                const args = JSON.parse(toolCallArgs);
+                const args = JSON.parse(toolCallArgs) as {
+                    city?: string;
+                    keyword?: string;
+                    checkIn?: string;
+                    checkOut?: string;
+                };
+
+                const cityLabel = args.city || '目标城市';
+                const keywordLabel = args.keyword || '特定条件';
+                const reasoningSteps = [
+                    `了解用户需求：城市为${cityLabel}，需求为${keywordLabel}入住；`,
+                    `筛选合适的酒店：根据用户需求在易宿平台筛选满足条件的酒店；`,
+                    `提供酒店交互页面：给出用户可点击的交互式卡片，介绍酒店详情。`,
+                ];
+                for (const step of reasoningSteps) {
+                    if (aborted) break;
+                    writeSseEvent(res, 'structured_reasoning_step', { text: step });
+                    await new Promise<void>(r => setTimeout(r, 400));
+                }
+
+                writeSseEvent(res, 'process_step', {
+                    id: 'search',
+                    text: '正在为您检索酒店...',
+                    status: 'loading',
+                });
+
                 const searchResult: HotelSearchResult = await executeHotelSearch(args);
 
                 const allHotels = [...searchResult.exactMatches, ...searchResult.recommendations];
                 const displayHotels = allHotels.slice(0, 3);
+
+                writeSseEvent(res, 'process_step', {
+                    id: 'search',
+                    text: '酒店筛选成功',
+                    status: 'success',
+                });
+
+                writeSseEvent(res, 'process_step', {
+                    id: 'integrate',
+                    text: '正在整合信息与生成排版...',
+                    status: 'loading',
+                });
 
                 writeSseEvent(res, 'tool_data', { hotels: displayHotels });
 
@@ -285,6 +316,8 @@ export const postChat = async (req: Request, res: Response) => {
                 messages,
             });
 
+            let integrateDone = false;
+
             for await (const chunk of secondStream) {
                 if (aborted) break;
 
@@ -292,11 +325,15 @@ export const postChat = async (req: Request, res: Response) => {
                     | { content?: string; reasoning_content?: string }
                     | undefined;
 
-                if (delta?.reasoning_content) {
-                    writeSseEvent(res, 'delta', { type: 'reasoning', text: delta.reasoning_content });
-                }
-
                 if (delta?.content) {
+                    if (!integrateDone) {
+                        integrateDone = true;
+                        writeSseEvent(res, 'process_step', {
+                            id: 'integrate',
+                            text: '信息整合完成',
+                            status: 'success',
+                        });
+                    }
                     writeSseEvent(res, 'delta', { type: 'content', text: delta.content });
                 }
             }

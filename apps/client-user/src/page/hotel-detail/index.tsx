@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
-import Share2 from 'lucide-react/dist/esm/icons/share-2';
+
 import { getHotelDetailApi, bookRoomApi, type HotelDetailVo, type RoomTypeVo } from '@/services/hotel-detail';
 import RoomList from '@/components/Detail/RoomList.tsx';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,115 @@ function readGuestSelection(): GuestSelection {
         return DEFAULT_GUEST_SELECTION;
     }
 }
+
+const SkeletonBlock = ({ className }: { className?: string }) => (
+    <div className={`bg-gray-200 rounded animate-pulse ${className ?? ''}`} />
+);
+
+const HotelDetailSkeleton = () => (
+    <div className="min-h-screen bg-gray-50 pb-[100px]">
+        {/* 顶部导航栏占位 */}
+        <div className="flex items-center p-4 absolute top-0 left-0 right-0 z-10">
+            <div className="w-10 h-10 rounded-full bg-black/10 animate-pulse" />
+        </div>
+
+        {/* 图片轮播占位 */}
+        <div className="h-64 bg-gray-200 animate-pulse" />
+
+        {/* 信息卡片 */}
+        <div className="relative px-4 -mt-6">
+            <div className="bg-white rounded-t-xl p-4 shadow-sm">
+                <div className="flex justify-between items-start">
+                    <SkeletonBlock className="h-6 w-3/5" />
+                    <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="w-3 h-3 rounded-full bg-gray-200 animate-pulse" />
+                        ))}
+                    </div>
+                </div>
+                <div className="mt-2 flex gap-2">
+                    <SkeletonBlock className="h-5 w-14" />
+                    <SkeletonBlock className="h-5 w-14" />
+                </div>
+
+                {/* 评分与地址 */}
+                <div className="flex mt-4 bg-gray-50 rounded-lg p-3 gap-4">
+                    <div className="flex flex-col gap-2 w-1/2 border-r border-gray-200 pr-4">
+                        <div className="flex items-baseline gap-2">
+                            <SkeletonBlock className="h-7 w-10" />
+                            <SkeletonBlock className="h-4 w-8" />
+                        </div>
+                        <SkeletonBlock className="h-3 w-full" />
+                    </div>
+                    <div className="flex flex-col gap-2 w-1/2">
+                        <SkeletonBlock className="h-3 w-full" />
+                        <SkeletonBlock className="h-3 w-2/3" />
+                    </div>
+                </div>
+
+                {/* 设施图标 */}
+                <div className="flex gap-4 mt-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex flex-col items-center gap-1 min-w-[56px]">
+                            <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+                            <SkeletonBlock className="h-2.5 w-10" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+
+        {/* 房型列表 */}
+        <div className="bg-white min-h-[300px] rounded-t-xl mt-2">
+            <div className="p-4 border-b border-gray-100">
+                <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                    <div className="flex gap-4 items-center">
+                        <div className="flex flex-col gap-1">
+                            <SkeletonBlock className="h-3 w-8" />
+                            <SkeletonBlock className="h-5 w-14" />
+                        </div>
+                        <SkeletonBlock className="h-5 w-10 rounded-full" />
+                        <div className="flex flex-col gap-1">
+                            <SkeletonBlock className="h-3 w-8" />
+                            <SkeletonBlock className="h-5 w-14" />
+                        </div>
+                    </div>
+                    <SkeletonBlock className="h-5 w-16" />
+                </div>
+            </div>
+            <div className="p-4 flex flex-col gap-6">
+                {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex gap-3 border-b border-gray-100 pb-6 last:border-0 animate-pulse">
+                        <div className="w-28 h-28 rounded-lg bg-gray-200 flex-shrink-0" />
+                        <div className="flex-1 flex flex-col justify-between">
+                            <div>
+                                <SkeletonBlock className="h-5 w-3/4" />
+                                <SkeletonBlock className="h-3 w-1/2 mt-2" />
+                                <div className="flex gap-1 mt-3">
+                                    <SkeletonBlock className="h-4 w-10" />
+                                    <SkeletonBlock className="h-4 w-10" />
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-end mt-2">
+                                <SkeletonBlock className="h-6 w-16" />
+                                <SkeletonBlock className="h-8 w-12" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        {/* 底部操作栏 */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-2 flex justify-between items-center z-50 safe-area-bottom pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+            <div className="flex flex-col gap-1">
+                <SkeletonBlock className="h-3 w-12" />
+                <SkeletonBlock className="h-5 w-16" />
+            </div>
+            <SkeletonBlock className="h-10 w-24 rounded-lg" />
+        </div>
+    </div>
+);
 
 const HotelDetailPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -157,7 +266,7 @@ const HotelDetailPage = () => {
         window.scrollTo({ top: offset, behavior: 'smooth' });
     };
 
-    if (pageLoading) return <div className="p-10 text-center">加载中...</div>;
+    if (pageLoading) return <HotelDetailSkeleton />;
     if (!hotel) return <div className="p-10 text-center">酒店不存在</div>;
 
     return (
@@ -166,9 +275,7 @@ const HotelDetailPage = () => {
                 <div onClick={() => navigate(-1)} className="bg-black/20 p-2 rounded-full backdrop-blur-sm cursor-pointer">
                     <ChevronLeft size={24} />
                 </div>
-                <div className="flex gap-3">
-                    <div className="bg-black/20 p-2 rounded-full backdrop-blur-sm"><Share2 size={20} /></div>
-                </div>
+                <div className="w-10" />
             </div>
 
             <div className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-sm transition-all duration-300 ${isScrolled ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
@@ -177,9 +284,7 @@ const HotelDetailPage = () => {
                         <ChevronLeft size={24} className="text-gray-800" />
                     </div>
                     <h2 className="text-base font-bold text-gray-900 truncate max-w-[60%]">{hotel.name}</h2>
-                    <div className="p-2 -mr-2 cursor-pointer">
-                        <Share2 size={20} className="text-gray-800" />
-                    </div>
+                    <div className="w-10" />
                 </div>
             </div>
 

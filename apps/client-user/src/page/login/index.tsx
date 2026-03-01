@@ -205,7 +205,6 @@ const LoginPage = () => {
                   >
                     {loginType === 'code' ? '账号密码登录' : '手机验证码登录'}
                   </span>
-                    <span className="opacity-50">境外手机密码登录</span>
                 </div>
             </div>
         </div>
