@@ -60,13 +60,26 @@ const normalizeRange = (range: DateRange): DateRange => {
 };
 
 const Calendar = ({ visible, selectedRange, mode = 'range', onConfirm, onClose }: CalendarProps) => {
-    // 仅用于弹层交互中的临时草稿，业务真值始终由 selectedRange + onConfirm 驱动。
     const [uiRange, setUiRange] = useState<{ start: Dayjs | null; end: Dayjs | null }>({
         start: null,
         end: null,
     });
     const [holidays, setHolidays] = useState<HolidayDay[]>([]);
     const today = useMemo(() => dayjs().startOf('day'), []);
+
+    const [shouldRender, setShouldRender] = useState(false);
+    const [animateIn, setAnimateIn] = useState(false);
+
+    useEffect(() => {
+        if (visible) {
+            setShouldRender(true);
+            requestAnimationFrame(() => requestAnimationFrame(() => setAnimateIn(true)));
+        } else {
+            setAnimateIn(false);
+            const timer = window.setTimeout(() => setShouldRender(false), 300);
+            return () => window.clearTimeout(timer);
+        }
+    }, [visible]);
 
     useEffect(() => {
         if (!visible) {
@@ -143,15 +156,24 @@ const Calendar = ({ visible, selectedRange, mode = 'range', onConfirm, onClose }
         }
     };
 
-    if (!visible) {
+    if (!shouldRender) {
         return null;
     }
 
     return (
         <div className="fixed inset-0 z-[100]">
-            <div className="absolute inset-0 bg-black/40" onClick={onClose} />
             <div
-                className="absolute inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl bg-white flex flex-col"
+                className={cn(
+                    'absolute inset-0 bg-black/40 transition-opacity duration-300',
+                    animateIn ? 'opacity-100' : 'opacity-0',
+                )}
+                onClick={onClose}
+            />
+            <div
+                className={cn(
+                    'absolute inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl bg-white flex flex-col transition-transform duration-300 ease-out',
+                    animateIn ? 'translate-y-0' : 'translate-y-full',
+                )}
                 onClick={(event) => event.stopPropagation()}
             >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, lazy, Suspense, memo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, lazy, Suspense, memo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
@@ -72,19 +72,30 @@ const AIAssistantPage = () => {
         validateSession();
     }, [validateSession]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const cached = scrollPositionCache.get(activeSessionId);
         if (cached != null && scrollContainerRef.current) {
-            requestAnimationFrame(() => {
-                scrollContainerRef.current!.scrollTop = cached;
-            });
+            scrollContainerRef.current.scrollTop = cached;
         }
+    }, [activeSessionId]);
 
-        return () => {
-            if (scrollContainerRef.current) {
-                scrollPositionCache.set(activeSessionId, scrollContainerRef.current.scrollTop);
+    useEffect(() => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+
+        let ticking = false;
+        const onScroll = () => {
+            if (!ticking) {
+                ticking = true;
+                requestAnimationFrame(() => {
+                    scrollPositionCache.set(activeSessionId, el.scrollTop);
+                    ticking = false;
+                });
             }
         };
+
+        el.addEventListener('scroll', onScroll, { passive: true });
+        return () => el.removeEventListener('scroll', onScroll);
     }, [activeSessionId]);
 
     useEffect(() => {

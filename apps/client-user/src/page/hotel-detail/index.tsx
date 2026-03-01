@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
-import Share2 from 'lucide-react/dist/esm/icons/share-2';
+
 import { getHotelDetailApi, bookRoomApi, type HotelDetailVo, type RoomTypeVo } from '@/services/hotel-detail';
 import RoomList from '@/components/Detail/RoomList.tsx';
 import { Button } from '@/components/ui/button';
@@ -41,8 +41,7 @@ const SkeletonBlock = ({ className }: { className?: string }) => (
 const HotelDetailSkeleton = () => (
     <div className="min-h-screen bg-gray-50 pb-[100px]">
         {/* 顶部导航栏占位 */}
-        <div className="flex justify-between items-center p-4 absolute top-0 left-0 right-0 z-10">
-            <div className="w-10 h-10 rounded-full bg-black/10 animate-pulse" />
+        <div className="flex items-center p-4 absolute top-0 left-0 right-0 z-10">
             <div className="w-10 h-10 rounded-full bg-black/10 animate-pulse" />
         </div>
 
@@ -276,9 +275,7 @@ const HotelDetailPage = () => {
                 <div onClick={() => navigate(-1)} className="bg-black/20 p-2 rounded-full backdrop-blur-sm cursor-pointer">
                     <ChevronLeft size={24} />
                 </div>
-                <div className="flex gap-3">
-                    <div className="bg-black/20 p-2 rounded-full backdrop-blur-sm"><Share2 size={20} /></div>
-                </div>
+                <div className="w-10" />
             </div>
 
             <div className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-sm transition-all duration-300 ${isScrolled ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
@@ -287,9 +284,7 @@ const HotelDetailPage = () => {
                         <ChevronLeft size={24} className="text-gray-800" />
                     </div>
                     <h2 className="text-base font-bold text-gray-900 truncate max-w-[60%]">{hotel.name}</h2>
-                    <div className="p-2 -mr-2 cursor-pointer">
-                        <Share2 size={20} className="text-gray-800" />
-                    </div>
+                    <div className="w-10" />
                 </div>
             </div>
 
