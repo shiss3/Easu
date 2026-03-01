@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
-import fs from 'fs/promises';
-import path from 'path';
+import holidaysData from '../data/2026.json';
 
 interface HolidayDay {
     name: string;
@@ -16,11 +15,8 @@ const loadHolidays = async (): Promise<HolidayDay[]> => {
         return cachedHolidays;
     }
 
-    const dataPath = path.resolve(__dirname, '../data/2026.json');
-    const fileContent = await fs.readFile(dataPath, 'utf-8');
-    const parsed = JSON.parse(fileContent) as { days?: HolidayDay[] };
-
-    cachedHolidays = Array.isArray(parsed?.days) ? parsed.days : [];
+    const parsed = holidaysData as { days?: HolidayDay[] };
+    cachedHolidays = Array.isArray(parsed.days) ? parsed.days : [];
     return cachedHolidays;
 };
 
