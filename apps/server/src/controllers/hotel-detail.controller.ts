@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '@repo/database';
+import { prisma, ReviewProcess } from '@repo/database';
 import dayjs from 'dayjs';
 
 export const getHotelDetail = async (req: Request, res: Response) => {
@@ -14,8 +14,12 @@ export const getHotelDetail = async (req: Request, res: Response) => {
         const checkIn = req.query.checkIn as string | undefined;
         const checkOut = req.query.checkOut as string | undefined;
 
-        const hotel = await prisma.hotel.findUnique({
-            where: { id: hotelId },
+        const hotel = await prisma.hotel.findFirst({
+            where: {
+                id: hotelId,
+                status: 1,
+                checking: ReviewProcess.PUBLISHED,
+            },
             include: {
                 roomTypes: {
                     orderBy: { price: 'asc' },

@@ -7,10 +7,10 @@ import routes from './routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const SSE_PATHS = ['/api/chat'];
+const SSE_PATHS = ['/api/chat', '/api/realtime/'];
 const helmetMiddleware = helmet();
 
-const isSsePath = (path: string) => SSE_PATHS.includes(path);
+const isSsePath = (path: string) => SSE_PATHS.some((ssePath) => path.startsWith(ssePath));
 
 // 中间件
 app.use(cors({

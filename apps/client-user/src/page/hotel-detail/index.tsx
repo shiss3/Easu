@@ -3,7 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 
-import { getHotelDetailApi, bookRoomApi, type HotelDetailVo, type RoomTypeVo } from '@/services/hotel-detail';
+import {
+    getHotelDetailApi,
+    bookRoomApi,
+    type HotelDetailVo,
+    type RoomRealtimeUpdateEvent,
+    type RoomTypeVo,
+} from '@/services/hotel-detail';
 import RoomList from '@/components/Detail/RoomList.tsx';
 import { Button } from '@/components/ui/button';
 import HotelHeader from '@/components/Detail/HotelHeader.tsx';
@@ -19,10 +25,12 @@ import {
     type ChildAge,
     type GuestSelection,
 } from '@/components/GuestSelector/types.ts';
+import { useHotelRoomRealtime } from '@/hooks/useHotelRoomRealtime';
 
 const Calendar = lazy(() => import('@/components/Calendar'));
 
 const DATE_FORMAT = 'YYYY-MM-DD';
+const FALLBACK_REFRESH_MS = 30000;
 
 function readGuestSelection(): GuestSelection {
     try {
@@ -165,6 +173,7 @@ const HotelDetailPage = () => {
     const [ageModalOpen, setAgeModalOpen] = useState(false);
     const [activeChildIndex, setActiveChildIndex] = useState<number | null>(null);
     const [guestVersion, setGuestVersion] = useState(0);
+    const [realtimeConnected, setRealtimeConnected] = useState(false);
 
     const guest = useMemo(() => readGuestSelection(), [guestVersion]);
     const totalPersons = guest.adults + guest.children;
@@ -211,12 +220,20 @@ const HotelDetailPage = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [handleScroll]);
 
-    const fetchDetail = useCallback(async (hotelId: string, start: string, end: string) => {
+    const fetchDetail = useCallback(async (
+        hotelId: string,
+        start: string,
+        end: string,
+        options?: { silent?: boolean }
+    ) => {
         try {
-            if (hasLoadedOnce.current) {
-                setRoomsLoading(true);
-            } else {
-                setPageLoading(true);
+            const silent = options?.silent === true;
+            if (!silent) {
+                if (hasLoadedOnce.current) {
+                    setRoomsLoading(true);
+                } else {
+                    setPageLoading(true);
+                }
             }
             const res = await getHotelDetailApi(hotelId, start, end);
             setHotel(res.data);
@@ -224,8 +241,10 @@ const HotelDetailPage = () => {
         } catch (error) {
             console.error(error);
         } finally {
-            setPageLoading(false);
-            setRoomsLoading(false);
+            if (!options?.silent) {
+                setPageLoading(false);
+                setRoomsLoading(false);
+            }
         }
     }, []);
 
@@ -234,6 +253,55 @@ const HotelDetailPage = () => {
             fetchDetail(id, dateRange.start, dateRange.end);
         }
     }, [id, dateRange.start, dateRange.end, fetchDetail]);
+
+    const applyRoomRealtimeUpdates = useCallback((updates: RoomRealtimeUpdateEvent[]) => {
+        if (!updates.length) return;
+        const updateMap = new Map<number, RoomRealtimeUpdateEvent>();
+        for (const update of updates) {
+            updateMap.set(update.roomTypeId, update);
+        }
+
+        setHotel((prev) => {
+            if (!prev) return prev;
+
+            let changed = false;
+            const roomTypes = prev.roomTypes.map((room) => {
+                const update = updateMap.get(room.id);
+                if (!update) return room;
+                if (room.price === update.price && room.quota === update.quota) return room;
+                changed = true;
+                return { ...room, price: update.price, quota: update.quota };
+            });
+            if (!changed) return prev;
+
+            const availableRooms = roomTypes.filter((room) => (room.quota ?? 0) > 0);
+            const minPrice = availableRooms.length > 0
+                ? Math.min(...availableRooms.map((room) => room.price))
+                : (roomTypes.length > 0 ? Math.min(...roomTypes.map((room) => room.price)) : 0);
+
+            return { ...prev, roomTypes, minPrice };
+        });
+    }, []);
+
+    useHotelRoomRealtime({
+        hotelId: id,
+        checkIn: dateRange.start,
+        checkOut: dateRange.end,
+        enabled: Boolean(id && dateRange.start && dateRange.end),
+        onSnapshot: (rooms) => applyRoomRealtimeUpdates(rooms),
+        onRoomUpdate: (update) => applyRoomRealtimeUpdates([update]),
+        onConnectionChange: setRealtimeConnected,
+    });
+
+    useEffect(() => {
+        if (!id || realtimeConnected) return;
+
+        const timer = window.setInterval(() => {
+            fetchDetail(id, dateRange.start, dateRange.end, { silent: true });
+        }, FALLBACK_REFRESH_MS);
+
+        return () => window.clearInterval(timer);
+    }, [id, dateRange.start, dateRange.end, realtimeConnected, fetchDetail]);
 
     const handleCalendarConfirm = (range: DateRange) => {
         setDateRange(range);

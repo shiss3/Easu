@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
@@ -86,7 +86,25 @@ type BookingState = 'idle' | 'loading' | 'success' | 'error';
 
 const RoomItem = ({ room, onBook }: { room: RoomTypeVo; onBook: (room: RoomTypeVo) => Promise<void> }) => {
     const [bookingState, setBookingState] = useState<BookingState>('idle');
-    const [localQuota, setLocalQuota] = useState(room.quota ?? 0);
+    const [optimisticDelta, setOptimisticDelta] = useState(0);
+    const optimisticTimerRef = useRef<number | null>(null);
+
+    const serverQuota = room.quota ?? 0;
+    const localQuota = Math.max(serverQuota + optimisticDelta, 0);
+
+    useEffect(() => {
+        // 服务端推送到达后清空本地短时 optimistic 偏移，避免库存长期漂移。
+        setOptimisticDelta(0);
+    }, [room.quota]);
+
+    useEffect(() => {
+        return () => {
+            if (optimisticTimerRef.current != null) {
+                window.clearTimeout(optimisticTimerRef.current);
+                optimisticTimerRef.current = null;
+            }
+        };
+    }, []);
 
     const realPrice = room.price;
     const originalPrice = Math.round(realPrice * 1.17);
@@ -114,7 +132,14 @@ const RoomItem = ({ room, onBook }: { room: RoomTypeVo; onBook: (room: RoomTypeV
         ]);
 
         if (result.status === 'fulfilled') {
-            setLocalQuota((prev) => Math.max(prev - 1, 0));
+            setOptimisticDelta(-1);
+            if (optimisticTimerRef.current != null) {
+                window.clearTimeout(optimisticTimerRef.current);
+            }
+            optimisticTimerRef.current = window.setTimeout(() => {
+                setOptimisticDelta(0);
+                optimisticTimerRef.current = null;
+            }, 1500);
             setBookingState('success');
             setTimeout(() => setBookingState('idle'), 1000);
         } else {

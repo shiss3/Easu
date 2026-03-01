@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { prisma } from '@repo/database';
+import { prisma, ReviewProcess } from '@repo/database';
 import dayjs from 'dayjs';
+import { publishRoomRangeUpdate } from '../services/room-realtime.service';
 
 export const bookRoom = async (req: Request, res: Response) => {
     try {
@@ -22,6 +23,20 @@ export const bookRoom = async (req: Request, res: Response) => {
 
         if (nightCount <= 0) {
             return res.status(400).json({ code: 400, message: '日期范围无效', data: null });
+        }
+
+        const roomType = await prisma.roomType.findFirst({
+            where: {
+                id: rtId,
+                hotel: {
+                    status: 1,
+                    checking: ReviewProcess.PUBLISHED,
+                },
+            },
+            select: { id: true, hotelId: true },
+        });
+        if (!roomType) {
+            return res.status(404).json({ code: 404, message: '房型不存在或酒店未上线', data: null });
         }
 
         await prisma.$transaction(async (tx) => {
@@ -48,6 +63,11 @@ export const bookRoom = async (req: Request, res: Response) => {
                 });
             }
         });
+
+        publishRoomRangeUpdate(roomType.hotelId, rtId, checkInDate.format('YYYY-MM-DD'), checkOutDate.format('YYYY-MM-DD'))
+            .catch((error) => {
+                console.error('Publish booking realtime update error:', error);
+            });
 
         res.json({ code: 200, message: '预订成功', data: null });
     } catch (error: any) {

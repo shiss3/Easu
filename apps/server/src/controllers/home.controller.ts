@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { prisma, Prisma } from '@repo/database';
+import { prisma, Prisma, ReviewProcess } from '@repo/database';
 
 export interface HomeBannerDto {
     id: number;
@@ -70,6 +70,10 @@ export const getBanners = async (req: Request, res: Response) => {
                 where: {
                     targetCity: city,
                     status: 1,
+                    hotel: {
+                        status: 1,
+                        checking: ReviewProcess.PUBLISHED,
+                    },
                     ...validTimeWhere,
                 },
                 orderBy: { sortOrder: 'asc' },
@@ -98,6 +102,10 @@ export const getBanners = async (req: Request, res: Response) => {
                 where: {
                     targetCity: null,
                     status: 1,
+                    hotel: {
+                        status: 1,
+                        checking: ReviewProcess.PUBLISHED,
+                    },
                     ...(excludeIds.length > 0 ? { hotelId: { notIn: excludeIds } } : {}),
                     ...validTimeWhere,
                 },
@@ -126,6 +134,7 @@ export const getBanners = async (req: Request, res: Response) => {
             const hotels = await prisma.hotel.findMany({
                 where: {
                     status: 1,
+                    checking: ReviewProcess.PUBLISHED,
                     ...(city ? { city } : {}),
                     ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
                     // Prisma 中 coverImage 为必填，但仍做兜底过滤：必须有值且非空字符串

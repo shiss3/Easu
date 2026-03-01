@@ -41,6 +41,7 @@ export const getSearchSuggestions = async (req: Request, res: Response) => {
                            ) AS sim
                     FROM "Hotel"
                     WHERE status = 1
+                      AND "checking" = 'PUBLISHED'
                       AND (
                           city ILIKE '%' || $1::text || '%'
                           OR word_similarity(city, $1::text) > 0.3
@@ -71,6 +72,7 @@ export const getSearchSuggestions = async (req: Request, res: Response) => {
                     FROM "Hotel" h
                     LEFT JOIN hotel_min_prices hmp ON hmp.hotel_id = h.id
                     WHERE h.status = 1
+                      AND h."checking" = 'PUBLISHED'
                       AND (
                           h.name ILIKE '%' || $1::text || '%'
                           OR h.city ILIKE '%' || $1::text || '%'

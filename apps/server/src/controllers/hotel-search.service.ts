@@ -190,6 +190,7 @@ INNER JOIN hotel_min_price hmp ON hmp.hotel_id = h.id
 LEFT JOIN room_type_features rtf ON rtf.hotel_id = h.id
 WHERE
     h.status = 1
+    AND h."checking" = 'PUBLISHED'
     AND ($5::text = '' OR h.city = $5::text)
     AND ($6::text = '' OR h.name ILIKE '%' || $6::text || '%' OR h.city ILIKE '%' || $6::text || '%' OR array_to_string(h.tags, ',') ILIKE '%' || $6::text || '%')
     AND (
@@ -271,6 +272,7 @@ LEFT JOIN hotel_room_info hri ON hri.hotel_id = h.id
 LEFT JOIN inventory_price ip ON ip.hotel_id = h.id
 WHERE
     h.status = 1
+    AND h."checking" = 'PUBLISHED'
     AND ($1::text = '' OR h.city ILIKE '%' || $1::text || '%')
     AND ($2::text = '' OR h.name ILIKE '%' || $2::text || '%' OR h.city ILIKE '%' || $2::text || '%' OR array_to_string(h.tags, ',') ILIKE '%' || $2::text || '%')
     AND (
@@ -324,6 +326,7 @@ SELECT
 FROM "Hotel" h
 LEFT JOIN hotel_min_prices hmp ON hmp.hotel_id = h.id
 WHERE h.status = 1
+    AND h."checking" = 'PUBLISHED'
     AND ($4::text = '' OR h.city = $4::text)
     AND (${hourlyTagFilter})
     AND ($5::text[] IS NULL OR h.tags @> $5::text[])

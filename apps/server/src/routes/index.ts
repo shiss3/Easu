@@ -7,6 +7,7 @@ import { getHolidayList } from '../controllers/calendar.controller';
 import { getRegeoLocation } from '../controllers/location.controller';
 import { getCities } from '../controllers/city.controller';
 import { postChat } from '../controllers/chat.controller';
+import { streamHotelRoomRealtime } from '../controllers/room-realtime.controller';
 import { requireMerchant } from '../middlewares/requireMerchant';
 import { uploadMiddleware } from '../services/upload.service';
 import { uploadImage } from '../controllers/hotel-manager.controller';
@@ -39,6 +40,8 @@ router.get('/location/regeo', getRegeoLocation);
 router.get('/cities', getCities);
 // AI 聊天：POST /chat
 router.post('/chat', postChat);
+// 酒店详情实时库存/价格：GET /realtime/hotel/:hotelId/rooms
+router.get('/realtime/hotel/:hotelId/rooms', streamHotelRoomRealtime);
 // C 端认证：POST /auth/*
 router.use('/auth', authRoutes);
 

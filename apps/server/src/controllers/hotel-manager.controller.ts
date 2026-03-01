@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '@repo/database';
 import { uploadToOSS } from '../services/upload.service';
 import type { ManagerRequest } from '../middlewares/requireManager';
+import { publishHotelSnapshotToActiveSubscribers } from '../services/room-realtime.service';
 
 
 enum ReviewProcess {
@@ -322,6 +323,10 @@ export const updateHotel = async (req: ManagerRequest, res: Response) => {
             });
             await prisma.roomInventory.createMany({ data: inventoryRows });
         }
+
+        publishHotelSnapshotToActiveSubscribers(hotelId).catch((error) => {
+            console.error('Publish merchant realtime update error:', error);
+        });
 
         return res.status(200).json({
             code: 200,
