@@ -477,9 +477,14 @@ export const setHotelOffline = async (req: ManagerRequest, res: Response) => {
             return res.status(400).json({ code: 400, message: '无效的酒店ID', data: null });
         }
 
+        const { managerRole: role, managerId } = req;
+
         const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
         if (!hotel) {
             return res.status(404).json({ code: 404, message: '酒店不存在', data: null });
+        }
+        if (role === 'MERCHANT' && hotel.ownerId !== managerId) {
+            return res.status(403).json({ code: 403, message: '无权限操作该酒店', data: null });
         }
         if (hotel.status !== 1 || hotel.checking !== ReviewProcess.PUBLISHED) {
             return res.status(400).json({ code: 400, message: '仅已发布且在线的酒店可下线', data: null });
@@ -507,9 +512,14 @@ export const setHotelOnline = async (req: ManagerRequest, res: Response) => {
             return res.status(400).json({ code: 400, message: '无效的酒店ID', data: null });
         }
 
+        const { managerRole: role, managerId } = req;
+
         const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
         if (!hotel) {
             return res.status(404).json({ code: 404, message: '酒店不存在', data: null });
+        }
+        if (role === 'MERCHANT' && hotel.ownerId !== managerId) {
+            return res.status(403).json({ code: 403, message: '无权限操作该酒店', data: null });
         }
         if (hotel.status !== 0) {
             return res.status(400).json({ code: 400, message: '仅已下线的酒店可上线', data: null });

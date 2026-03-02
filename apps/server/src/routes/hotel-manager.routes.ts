@@ -23,8 +23,9 @@ router.get('/hotels/:id', getHotelDetailForEdit);
 router.patch('/hotels/:id', updateHotel);
 router.get('/hotels', getHotelList);
 router.post('/admin/audit/:id', requireAdmin, auditHotel);
-router.post('/admin/offline/:id', requireAdmin, setHotelOffline);
-router.post('/admin/online/:id', requireAdmin, setHotelOnline);
+// 上下线操作：管理员和商户都可调用（商户仅能操作自己的酒店）
+router.post('/admin/offline/:id', setHotelOffline);
+router.post('/admin/online/:id', setHotelOnline);
 router.post('/upload', uploadMiddleware.single('file'), uploadImage);
 router.post('/merchant/hotels', createMerchantHotel);
 
