@@ -134,7 +134,8 @@ function HotelList() {
   const handleOnline = async (record: HotelListItem) => {
     try {
       await setHotelOnline(record.id);
-      message.success("已上线，请审核");
+      // 商户与管理员提示文案区分
+      message.success(role === "MERCHANT" ? "已上线，待审核" : "已上线，请审核");
       fetchList(getCurrentFilterParams());
     } catch {
       // message 已在 request 拦截器处理
@@ -169,25 +170,21 @@ function HotelList() {
         <Tag color={REVIEW_TAG_COLOR[checking]}>{REVIEW_LABEL[checking]}</Tag>
       ),
     },
-    ...(role === "ADMIN"
-      ? [
-          {
-            title: "在线状态",
-            key: "status",
-            width: 90,
-            render: (_: unknown, record: HotelListItem) =>
-              record.status === 1 ? (
-                <Tag color="success">在线</Tag>
-              ) : (
-                <Tag color="default">已下线</Tag>
-              ),
-          } as const,
-        ]
-      : []),
+    {
+      title: "在线状态",
+      key: "status",
+      width: 90,
+      render: (_: unknown, record: HotelListItem) =>
+        record.status === 1 ? (
+          <Tag color="success">在线</Tag>
+        ) : (
+          <Tag color="default">已下线</Tag>
+        ),
+    },
     {
       title: "操作",
       key: "action",
-      width: role === "ADMIN" ? 200 : 140,
+      width: 220,
       fixed: "right" as const,
       render: (_: unknown, record: HotelListItem) => {
         const nodes: React.ReactNode[] = [];
@@ -201,6 +198,32 @@ function HotelList() {
             nodes.push(
               <Button type="link" size="small" key="view" onClick={() => openViewAuditNote(record)}>
                 查看
+              </Button>
+            );
+          }
+          // 商户上下线逻辑与管理员保持一致
+          if (record.status === 1 && record.checking === "PUBLISHED") {
+            nodes.push(
+              <Popconfirm
+                key="offline"
+                title="确定下线该酒店？"
+                onConfirm={() => handleOffline(record)}
+              >
+                <Button type="link" size="small" danger>
+                  下线
+                </Button>
+              </Popconfirm>
+            );
+          }
+          if (record.status === 0) {
+            nodes.push(
+              <Button
+                type="link"
+                size="small"
+                key="online"
+                onClick={() => handleOnline(record)}
+              >
+                上线
               </Button>
             );
           }
