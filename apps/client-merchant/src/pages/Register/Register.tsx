@@ -3,7 +3,7 @@ import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-de
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { register as registerApi, type RegisterData, type ManagerRole } from '../../api/users';
-import logo from '../../assets/logo.jpg';
+import logo from '../../assets/logo.png';
 import bg0 from '../../assets/bg0.jpg';
 import bg1 from '../../assets/bg1.png';
 import './index.css';

@@ -1,4 +1,4 @@
-import logo from "../../assets/logo.jpg"
+import logo from "../../assets/logo.png"
 import bg0 from "../../assets/bg0.jpg"
 import bg1 from "../../assets/bg1.png"
 import "./index.css"

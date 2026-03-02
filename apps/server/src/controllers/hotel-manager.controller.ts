@@ -492,7 +492,8 @@ export const setHotelOffline = async (req: ManagerRequest, res: Response) => {
 
         await prisma.hotel.update({
             where: { id: hotelId },
-            data: { status: 0, checking: ReviewProcess.PENDING },
+            // 下线仅修改在线状态，不变更审核状态
+            data: { status: 0 },
         });
 
         return res.status(200).json({ code: 200, message: '已下线', data: null });

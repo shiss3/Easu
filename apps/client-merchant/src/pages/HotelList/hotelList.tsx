@@ -206,7 +206,8 @@ function HotelList() {
           }
         }
         if (role === "ADMIN") {
-          if (record.checking !== "PUBLISHED") {
+          // 管理员仅对「在线且待审核」的酒店展示审核按钮
+          if (record.status === 1 && record.checking === "PENDING") {
             nodes.push(
               <Button type="link" size="small" key="audit" onClick={() => openAudit(record)}>
                 审核

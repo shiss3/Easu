@@ -1,6 +1,6 @@
 import { Menu, type MenuProps } from "antd";
 import { useMemo } from "react";
-import logo from "../../assets/logo.jpg";
+import logo from "../../assets/logo.png";
 import icons from "./iconList";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
