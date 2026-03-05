@@ -6,6 +6,8 @@ import xss from 'xss';
 import routes from './routes';
 
 const app = express();
+//信任最近一层的反向代理
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 const SSE_PATHS = ['/api/chat', '/api/realtime/'];
 const helmetMiddleware = helmet();
@@ -65,7 +67,7 @@ app.use((req, _res, next) => {
 });
 
 // 路由挂载
-app.use('/api', routes); // 最终地址: http://localhost:3001/api
+app.use('/api', routes); // 最终地址: 开发环境：http://localhost:3001/api
 
 app.listen(PORT as number, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);

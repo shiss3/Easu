@@ -11,6 +11,8 @@ import Banner from '@/components/Banner.tsx';
 import GuestSelector from '@/components/GuestSelector';
 import { useBanners, useGeoLocation } from '@/hooks/useHomeData';
 import { useIsLocationMode, useNights, useSearchStore } from '@/store/searchStore';
+import { useUserIntent } from '@/hooks/useUserIntent';
+import CollaborativeHint from '@/components/CollaborativeHint';
 
 const Calendar = lazy(() => import('@/components/Calendar'));
 const CitySelector = lazy(() => import('@/components/CitySelector.tsx'));
@@ -25,6 +27,22 @@ const HomePage = () => {
     const [citySelectorVisible, setCitySelectorVisible] = useState(false);
     const [showPriceSelector, setShowPriceSelector] = useState(false);
     const hydratedRef = useRef(false);
+
+    const { intent, dismiss, accept } = useUserIntent({ page: 'home' });
+    const handleAcceptIntent = () => {
+        const currentState = useSearchStore.getState();
+        const freshIntent = intent ? {
+            ...intent,
+            context: {
+                ...intent.context,
+                city: currentState.city,
+                dateRange: { ...currentState.dateRange },
+                keyword: currentState.keyword,
+            },
+        } : intent;
+        accept();
+        navigate('/ai-results', { state: { intent: freshIntent } });
+    };
 
     const city = useSearchStore((state) => state.city);
     const coords = useSearchStore((state) => state.coords);
@@ -330,6 +348,14 @@ const HomePage = () => {
                     onClose={() => setShowPriceSelector(false)}
                 />
             </Suspense>
+
+            {intent && (
+                <CollaborativeHint
+                    intent={intent}
+                    onAccept={handleAcceptIntent}
+                    onDismiss={dismiss}
+                />
+            )}
         </div>
     );
 };

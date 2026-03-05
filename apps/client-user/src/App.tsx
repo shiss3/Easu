@@ -4,6 +4,7 @@ import SearchResultPage from './page/search-result';
 import HotelDetailPage from "@/page/hotel-detail";
 import LoginPage from "@/page/login";
 import AIAssistantPage from "@/page/ai-assistant";
+import AIResultsPage from "@/page/ai-results";
 import MobileLayout from "@/layouts/MobileLayout";
 import { Toaster } from 'sonner';
 
@@ -18,6 +19,7 @@ function App() {
                 <Route path="/search" element={<SearchResultPage />} />
                 <Route path="/hotel/:id" element={<HotelDetailPage />} />
                 <Route path="/ai-assistant" element={<AIAssistantPage />} />
+                <Route path="/ai-results" element={<AIResultsPage />} />
                 <Route path="/login" element={<LoginPage />} />
             </Routes>
         </BrowserRouter>
