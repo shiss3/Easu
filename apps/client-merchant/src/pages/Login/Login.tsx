@@ -1,4 +1,4 @@
-import logo from "../../assets/logo.jpg"
+import logo from "../../assets/logo.png"
 import bg0 from "../../assets/bg0.jpg"
 import bg1 from "../../assets/bg1.png"
 import "./index.css"
@@ -45,7 +45,7 @@ function Login() {
                 <div className="part">
                     <div className="title">
                         <div className="logo">
-                            <img src={logo} width={100} alt="logo" />
+                            <img src={logo} width={200} alt="logo" />
                         </div>
                         <h1>易宿·酒店管理平台</h1>
                     </div>
