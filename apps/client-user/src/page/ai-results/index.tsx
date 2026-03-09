@@ -1,29 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
-import type { HotelVo } from '@/services/hotel-search';
 import type { IntentSignal } from '@/types/intent';
 import {
     StructuredReasoningBlock,
     ProcessStepsList,
-    type ProcessStep,
 } from '@/components/Ai/AgentVisualization';
 import { HotelCard } from '@/components/SearchResult/HotelCard';
+import { useAIResultsStore, getIntentKey } from '@/store/aiResultsStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-
-/* ── Helpers ──────────────────────────────────────────────────────────── */
-
-function upsertStep(steps: ProcessStep[], incoming: ProcessStep): ProcessStep[] {
-    const idx = steps.findIndex(s => s.id === incoming.id);
-    if (idx === -1) return [...steps, incoming];
-    const copy = [...steps];
-    copy[idx] = { ...copy[idx], ...incoming };
-    return copy;
-}
 
 /* ── Skeleton ─────────────────────────────────────────────────────────── */
 
@@ -54,75 +43,95 @@ const HotelCardSkeleton = () => (
 const AIResultsPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const intent = (location.state as { intent?: IntentSignal } | null)?.intent;
+    const incomingIntent = (location.state as { intent?: IntentSignal } | null)?.intent;
+    const incomingKey = incomingIntent ? getIntentKey(incomingIntent) : '';
 
-    const [reasoning, setReasoning] = useState<string[]>([]);
-    const [processSteps, setProcessSteps] = useState<ProcessStep[]>([]);
-    const [hotels, setHotels] = useState<HotelVo[]>([]);
-    const [summary, setSummary] = useState('');
+    const store = useAIResultsStore();
     const [isGenerating, setIsGenerating] = useState(false);
-    const [vizCollapsed, setVizCollapsed] = useState(false);
-
     const abortRef = useRef<AbortController | null>(null);
-    const hasFetchedRef = useRef(false);
+    const fetchedKeyRef = useRef('');
 
-    const fetchResults = useCallback(async (signal: IntentSignal) => {
+    /* 等待 persist 从 sessionStorage 恢复完成再做 cache 判断 */
+    const [hydrated, setHydrated] = useState(
+        () => useAIResultsStore.persist.hasHydrated(),
+    );
+    useEffect(() => {
+        if (hydrated) return;
+        return useAIResultsStore.persist.onFinishHydration(() => setHydrated(true));
+    }, [hydrated]);
+
+    useEffect(() => {
+        if (!hydrated || !incomingIntent || !incomingKey) return;
+
+        // 本次组件生命周期已经处理过这个 key
+        if (fetchedKeyRef.current === incomingKey) return;
+
+        const cached = useAIResultsStore.getState();
+
+        // sessionStorage 缓存命中：同 key + 已完成 → 直接复用，不发请求
+        if (incomingKey === cached.intentKey && cached.isComplete) {
+            fetchedKeyRef.current = incomingKey;
+            return;
+        }
+
+        fetchedKeyRef.current = incomingKey;
+        cached.reset(incomingIntent);
         setIsGenerating(true);
         const ctrl = new AbortController();
         abortRef.current = ctrl;
 
-        try {
-            await fetchEventSource(`${API_BASE}/chat/intent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ intent: signal }),
-                signal: ctrl.signal,
-                openWhenHidden: true,
+        const { addReasoning, upsertStep, setHotels, appendSummary, setSummary, markComplete } =
+            useAIResultsStore.getState();
 
-                onmessage(ev) {
-                    let data: Record<string, unknown>;
-                    try { data = JSON.parse(ev.data); } catch { return; }
+        fetchEventSource(`${API_BASE}/chat/intent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ intent: incomingIntent }),
+            signal: ctrl.signal,
+            openWhenHidden: true,
 
-                    if (ev.event === 'structured_reasoning_step') {
-                        setReasoning(prev => [...prev, data.text as string]);
-                    } else if (ev.event === 'process_step') {
-                        setProcessSteps(prev =>
-                            upsertStep(prev, data as unknown as ProcessStep),
-                        );
-                    } else if (ev.event === 'hotel_list') {
-                        setHotels(data.hotels as HotelVo[]);
-                    } else if (ev.event === 'delta') {
-                        setSummary(prev => prev + (data.text as string));
-                    } else if (ev.event === 'error') {
-                        setSummary((data.message as string) || '抱歉，出了点问题');
-                    }
-                },
-                onclose() {
-                    setIsGenerating(false);
-                    setVizCollapsed(true);
-                },
-                onerror(err) {
-                    setIsGenerating(false);
-                    if (ctrl.signal.aborted) throw err;
-                },
-            });
-        } catch {
+            onmessage(ev) {
+                let data: Record<string, unknown>;
+                try { data = JSON.parse(ev.data); } catch { return; }
+
+                if (ev.event === 'structured_reasoning_step') {
+                    addReasoning(data.text as string);
+                } else if (ev.event === 'process_step') {
+                    upsertStep(data as unknown as Parameters<typeof upsertStep>[0]);
+                } else if (ev.event === 'hotel_list') {
+                    setHotels(data.hotels as Parameters<typeof setHotels>[0]);
+                } else if (ev.event === 'delta') {
+                    appendSummary(data.text as string);
+                } else if (ev.event === 'error') {
+                    setSummary((data.message as string) || '抱歉，出了点问题');
+                }
+            },
+            onclose() {
+                setIsGenerating(false);
+                markComplete();
+            },
+            onerror(err) {
+                setIsGenerating(false);
+                if (ctrl.signal.aborted) throw err;
+            },
+        }).catch(() => {
             if (!ctrl.signal.aborted) {
-                setSummary(prev => prev || '网络连接异常，请稍后重试。');
+                const s = useAIResultsStore.getState();
+                if (!s.summary) s.setSummary('网络连接异常，请稍后重试。');
             }
-        } finally {
-            setIsGenerating(false);
-        }
-    }, []);
+        }).finally(() => setIsGenerating(false));
 
-    useEffect(() => {
-        if (!intent || hasFetchedRef.current) return;
-        hasFetchedRef.current = true;
-        fetchResults(intent);
-        return () => { abortRef.current?.abort(); };
-    }, [intent, fetchResults]);
+        return () => {
+            ctrl.abort();
+            fetchedKeyRef.current = '';
+        };
+    // 用 string key 做依赖（稳定），而非 object reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hydrated, incomingKey]);
 
-    if (!intent) {
+    /* 渲染优先使用 store 中缓存的 intent（刷新后 location.state 可能丢失） */
+    const displayIntent = store.intent || incomingIntent;
+    if (!displayIntent && hydrated) {
         return (
             <div className="flex flex-col items-center justify-center h-screen bg-gray-50 px-6 text-center">
                 <Sparkles size={40} className="text-indigo-400 mb-4" />
@@ -137,6 +146,7 @@ const AIResultsPage = () => {
         );
     }
 
+    const { reasoning, processSteps, hotels, summary, vizCollapsed } = store;
     const hasHotels = hotels.length > 0;
     const showSkeleton = isGenerating && !hasHotels;
 
@@ -160,7 +170,7 @@ const AIResultsPage = () => {
                 {/* 可折叠全链路可视化 */}
                 <div className="mx-3 mt-3">
                     <button
-                        onClick={() => setVizCollapsed(v => !v)}
+                        onClick={() => store.setVizCollapsed(!vizCollapsed)}
                         className="w-full flex items-center justify-between px-3 py-2 bg-white rounded-t-xl border border-gray-100 text-xs text-slate-500"
                     >
                         <span className="font-medium">Agent 推理过程</span>

@@ -12,6 +12,7 @@ import GuestSelector from '@/components/GuestSelector';
 import { useBanners, useGeoLocation } from '@/hooks/useHomeData';
 import { useIsLocationMode, useNights, useSearchStore } from '@/store/searchStore';
 import { useUserIntent } from '@/hooks/useUserIntent';
+import { useClientAI } from '@/hooks/useClientAI';
 import CollaborativeHint from '@/components/CollaborativeHint';
 
 const Calendar = lazy(() => import('@/components/Calendar'));
@@ -28,7 +29,8 @@ const HomePage = () => {
     const [showPriceSelector, setShowPriceSelector] = useState(false);
     const hydratedRef = useRef(false);
 
-    const { intent, dismiss, accept } = useUserIntent({ page: 'home' });
+    const { status: aiStatus, progress: aiProgress, isReady: aiReady, classify } = useClientAI();
+    const { intent, dismiss, accept } = useUserIntent({ page: 'home', classify, aiReady });
     const handleAcceptIntent = () => {
         const currentState = useSearchStore.getState();
         const freshIntent = intent ? {
@@ -355,6 +357,29 @@ const HomePage = () => {
                     onAccept={handleAcceptIntent}
                     onDismiss={dismiss}
                 />
+            )}
+
+            {/* 端侧 AI 模型状态指示器 */}
+            {aiStatus === 'loading' && (
+                <div className="fixed bottom-3 left-3 z-40 flex items-center gap-1.5
+                                bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-sm
+                                border border-gray-100 text-[10px] text-gray-400
+                                animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
+                    </span>
+                    AI {aiProgress > 0 ? `${aiProgress}%` : '加载中'}
+                </div>
+            )}
+            {aiStatus === 'ready' && (
+                <div className="fixed bottom-3 left-3 z-40 flex items-center gap-1.5
+                                bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-sm
+                                border border-green-100 text-[10px] text-green-600
+                                animate-in fade-in duration-300">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+                    端侧 AI 就绪
+                </div>
             )}
         </div>
     );

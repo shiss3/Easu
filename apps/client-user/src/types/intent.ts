@@ -16,4 +16,5 @@ export interface IntentSignal {
     context: IntentContext;
     trigger: TriggerReason;
     message: string;
+    enhancedByAI?: boolean;
 }

@@ -20,7 +20,8 @@ app.use(cors({
     // 必须明确允许你的主域名和 www 域名
     origin: ['https://easu.top',
              'https://www.easu.top',
-             'https://easu-client-merchant.vercel.app'
+             'https://easu-client-merchant.vercel.app',
+             'http://localhost:5173'
     ],
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

@@ -17,6 +17,7 @@ interface CollaborativeHintProps {
 export default function CollaborativeHint({ intent, onAccept, onDismiss }: CollaborativeHintProps) {
     const [visible, setVisible] = useState(false);
     const [exiting, setExiting] = useState(false);
+    const [countdown, setCountdown] = useState(false);
     const onAcceptRef = useRef(onAccept);
     const onDismissRef = useRef(onDismiss);
     onAcceptRef.current = onAccept;
@@ -27,13 +28,19 @@ export default function CollaborativeHint({ intent, onAccept, onDismiss }: Colla
         return () => cancelAnimationFrame(raf);
     }, []);
 
+    useEffect(() => {
+        if (!visible || exiting) return;
+        const id = requestAnimationFrame(() => {
+            requestAnimationFrame(() => setCountdown(true));
+        });
+        return () => cancelAnimationFrame(id);
+    }, [visible, exiting]);
+
     const exit = (cb: () => void) => {
         if (exiting) return;
         setExiting(true);
         setTimeout(cb, 280);
     };
-
-    const progressPercent = visible && !exiting ? 0 : 100;
 
     return (
         <div
@@ -44,11 +51,11 @@ export default function CollaborativeHint({ intent, onAccept, onDismiss }: Colla
             }`}
         >
             <div className="relative bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
-                {/* 进度条：倒计时可视化 */}
+                {/* 进度条：倒计时可视化 — 从 100% 线性缩减到 0% */}
                 <div className="absolute top-0 left-0 h-[3px] bg-indigo-400/40 transition-all ease-linear"
                      style={{
-                         width: `${100 - progressPercent}%`,
-                         transitionDuration: visible && !exiting ? `${AUTO_DISMISS_MS}ms` : '0ms',
+                         width: countdown ? '0%' : '100%',
+                         transitionDuration: countdown ? `${AUTO_DISMISS_MS}ms` : '0ms',
                      }}
                 />
 
@@ -60,6 +67,13 @@ export default function CollaborativeHint({ intent, onAccept, onDismiss }: Colla
                     <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-800 leading-relaxed">
                             {intent.message}
+                            {intent.enhancedByAI && (
+                                <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5
+                                                 bg-indigo-50 text-indigo-500 text-[10px] font-medium
+                                                 rounded-full align-middle">
+                                    AI
+                                </span>
+                            )}
                         </p>
 
                         <div className="flex items-center gap-2 mt-3">

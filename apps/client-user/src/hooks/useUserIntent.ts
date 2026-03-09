@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { useSearchStore } from '@/store/searchStore';
 import type { IntentSignal, IntentType, TriggerReason } from '@/types/intent';
+import type { ClassifyResult } from '@/hooks/useClientAI';
 
 /* ── Constants ────────────────────────────────────────────────────────── */
 
@@ -19,6 +20,8 @@ export interface UseUserIntentOptions {
     dismissCooldown?: number;
     formThreshold?: number;
     dwellThreshold?: number;
+    classify?: (text: string, labels?: string[]) => Promise<ClassifyResult>;
+    aiReady?: boolean;
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
@@ -77,16 +80,35 @@ function generateMessage(fields: string[], city: string, keyword: string): strin
     return '需要 AI 帮你找到最合适的酒店吗？';
 }
 
+function buildContextDescription(fields: string[], city: string, keyword: string): string {
+    const parts: string[] = [];
+    if (fields.includes('city')) parts.push(`looking for hotels in ${city}`);
+    if (fields.includes('date')) parts.push('selected travel dates');
+    if (fields.includes('keyword')) parts.push(`searching for "${keyword}"`);
+    if (fields.includes('price')) parts.push('filtering by price range');
+    if (fields.includes('stars')) parts.push('filtering by star rating');
+    if (fields.includes('location')) parts.push('searching nearby location');
+    return `User is ${parts.join(', ')} on a hotel booking app`;
+}
+
+function mapClassifyLabel(label: string): IntentType {
+    if (label.includes('comparing')) return 'price_compare';
+    if (label.includes('searching')) return 'hotel_search';
+    return 'hotel_search';
+}
+
 /* ── Hook ─────────────────────────────────────────────────────────────── */
 
 export function useUserIntent(options: UseUserIntentOptions) {
     const {
         page,
         enabled = true,
-        baseCooldown = 15_000,
-        dismissCooldown = 120_000,
-        formThreshold = 2,
-        dwellThreshold = 15_000,
+        baseCooldown = 3_000,
+        dismissCooldown = 10_000,
+        formThreshold = 1,
+        dwellThreshold = 5_000,
+        classify,
+        aiReady = false,
     } = options;
 
     const [intent, setIntent] = useState<IntentSignal | null>(null);
@@ -182,6 +204,33 @@ export function useUserIntent(options: UseUserIntentOptions) {
 
         return () => clearInterval(timer);
     }, [enabled, dwellThreshold, tryTrigger]);
+
+    // ── 端侧 AI 增强：对规则引擎产生的意图做异步分类精化 ────────────
+    useEffect(() => {
+        if (!intent || intent.enhancedByAI || !aiReady || !classify) return;
+
+        let cancelled = false;
+        const ctx = intent.context;
+        const text = buildContextDescription(ctx.filledFields, ctx.city, ctx.keyword);
+
+        classify(text).then(result => {
+            if (cancelled) return;
+            setIntent(prev => {
+                if (!prev || prev.enhancedByAI) return prev;
+                return {
+                    ...prev,
+                    type: mapClassifyLabel(result.label),
+                    confidence: result.score,
+                    enhancedByAI: true,
+                };
+            });
+        }).catch(() => {
+            if (cancelled) return;
+            setIntent(prev => prev ? { ...prev, enhancedByAI: true } : prev);
+        });
+
+        return () => { cancelled = true; };
+    }, [intent, aiReady, classify]);
 
     // ── 自动消失：显示后超时未操作视为忽视 ────────────────────────────
     useEffect(() => {
