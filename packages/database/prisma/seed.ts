@@ -162,7 +162,7 @@ async function main() {
     const bannerDataToInsert: any[] = [];
     const now = new Date();
     const startAt = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const endAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const endAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
     let globalBannerSortOrder = 1;
 
@@ -269,7 +269,7 @@ async function main() {
             const hasInventoryHole = Math.random() < 0.15;
             // 挖坑日期：随机选 1~3 天
             const holeDays = hasInventoryHole
-                ? randomPickMultiple(Array.from({ length: 30 }, (_, k) => k), randomInt(1, 3))
+                ? randomPickMultiple(Array.from({ length: 90 }, (_, k) => k), randomInt(1, 5))
                 : [];
 
             for (const rt of roomTypesToCreate) {
@@ -289,7 +289,7 @@ async function main() {
                     }
                 });
 
-                for (let d = 0; d < 30; d++) {
+                for (let d = 0; d < 90; d++) {
                     const date = getFutureDate(d);
                     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
@@ -329,7 +329,7 @@ async function main() {
     await prisma.homeBanner.createMany({ data: bannerDataToInsert });
     console.log(`✅ 成功配置 ${bannerDataToInsert.length} 个 Banner (包含全国精选和城市精选)`);
 
-    console.log('\n🎉🎉🎉 史诗级海量数据填充完成！(共生成 2000 家酒店, 8000 个房型, 240000 条库存记录)');
+    console.log('\n🎉🎉🎉 史诗级海量数据填充完成！(共生成 2000 家酒店, 8000 个房型, 720000 条库存记录，覆盖至6月底)');
 }
 
 main()
