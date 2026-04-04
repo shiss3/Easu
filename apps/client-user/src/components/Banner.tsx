@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils.ts';
+import { SafeImage } from '@/components/SafeImage';
 
 export interface HomeBannerDto {
     id: number;
@@ -170,7 +171,7 @@ export default function Banner(props: HomeBannerProps) {
                         onClick={() => handleSlideClick(item)}
                         aria-label={`Banner ${idx + 1}`}
                     >
-                        <img
+                        <SafeImage
                             src={item.imageUrl}
                             alt={item.title}
                             className="h-full w-full object-cover"

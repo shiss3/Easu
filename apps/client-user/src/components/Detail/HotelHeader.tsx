@@ -16,6 +16,7 @@ import ConciergeBell from 'lucide-react/dist/esm/icons/concierge-bell';
 import Bot from 'lucide-react/dist/esm/icons/bot';
 import type {HotelDetailVo} from '@/services/hotel-detail.ts';
 import type { ReactNode } from 'react';
+import { SafeImage } from '@/components/SafeImage';
 
 interface TagIconMatch {
     keywords: string[];
@@ -82,10 +83,10 @@ const HotelHeader = ({ hotel }: { hotel: HotelDetailVo }) => {
                     onScroll={handleScroll}
                     className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full"
                 >
-                    {images.map((img, idx) => (
-                        <img
-                            key={idx}
-                            src={img}
+                    {images.map((imgUrl, idx) => (
+                        <SafeImage
+                            key={`${imgUrl}-${idx}`}
+                            src={imgUrl}
                             alt={`${hotel.name} ${idx + 1}`}
                             className="w-full h-full object-cover flex-shrink-0 snap-start"
                         />

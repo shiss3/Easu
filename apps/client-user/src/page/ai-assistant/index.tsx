@@ -19,6 +19,7 @@ import {
     type ProcessStep,
 } from '@/store/aiChatStore';
 import { StructuredReasoningBlock, ProcessStepsList } from '@/components/Ai/AgentVisualization';
+import { SafeImage } from '@/components/SafeImage';
 
 const ModelSelectorModal = lazy(() => import('@/components/Ai/ModelSelectorModal.tsx'));
 const HistoryDrawer = lazy(() => import('@/components/Ai/HistoryDrawer.tsx'));
@@ -388,8 +389,8 @@ function InlineHotelCard({ hotel, onNavigate }: { hotel: HotelVo; onNavigate: ()
             onClick={onNavigate}
             className="flex gap-3 my-2 bg-white border border-slate-100 p-2.5 rounded-xl shadow-sm cursor-pointer active:scale-[0.98] transition-transform w-full max-w-sm"
         >
-            <img
-                src={hotel.coverImage || 'https://placehold.co/208x128?text=Hotel'}
+            <SafeImage
+                src={hotel.coverImage}
                 alt={hotel.name}
                 className="w-24 h-24 object-cover rounded-lg shrink-0"
                 loading="lazy"

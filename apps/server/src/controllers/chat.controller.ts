@@ -261,7 +261,7 @@ export const postChat = async (req: Request, res: Response) => {
 
                 writeSseEvent(res, 'process_step', {
                     id: 'search',
-                    text: '正在为您检索酒店...',
+                    text: '酒店信息检索中...',
                     status: 'loading',
                 });
 
@@ -272,13 +272,7 @@ export const postChat = async (req: Request, res: Response) => {
 
                 writeSseEvent(res, 'process_step', {
                     id: 'search',
-                    text: '酒店筛选成功',
-                    status: 'success',
-                });
-
-                writeSseEvent(res, 'process_step', {
-                    id: 'integrate',
-                    text: '正在整合信息与生成排版...',
+                    text: `为您找到满足「${keywordLabel}」的${displayHotels.length}家酒店`,
                     status: 'loading',
                 });
 
@@ -310,12 +304,31 @@ export const postChat = async (req: Request, res: Response) => {
             });
 
             // ── Second Pass: natural-language summary ───────────────────
-            const secondStream = await doubaoClient.chat.completions.create({
+            // Start the LLM call immediately; stream fake progress in
+            // parallel to mask the ~10s TTFT with animated status updates.
+            const secondStreamPromise = doubaoClient.chat.completions.create({
                 model,
                 stream: true,
                 messages,
             });
 
+            let progressCancelled = false;
+            const fakeProgressSteps: { delay: number; id: string; text: string; status: 'loading' | 'success' }[] = [
+                { delay: 1000, id: 'search',    text: '酒店筛选成功',              status: 'success' },
+                { delay: 800,  id: 'integrate',  text: '正在整合信息与生成排版...', status: 'loading' },
+                { delay: 1200, id: 'integrate',  text: '正在为您生成推荐方案...',   status: 'loading' },
+                { delay: 1000, id: 'integrate',  text: '即将为您呈现结果...',       status: 'loading' },
+            ];
+            // Fire-and-forget: fake progress runs concurrently with the LLM call
+            const fakeProgressTask = (async () => {
+                for (const step of fakeProgressSteps) {
+                    await new Promise<void>(r => setTimeout(r, step.delay));
+                    if (progressCancelled || aborted) return;
+                    writeSseEvent(res, 'process_step', step);
+                }
+            })().catch(() => { /* response may have closed */ });
+
+            const secondStream = await secondStreamPromise;
             let integrateDone = false;
 
             for await (const chunk of secondStream) {
@@ -327,7 +340,13 @@ export const postChat = async (req: Request, res: Response) => {
 
                 if (delta?.content) {
                     if (!integrateDone) {
+                        progressCancelled = true;
                         integrateDone = true;
+                        writeSseEvent(res, 'process_step', {
+                            id: 'search',
+                            text: '酒店筛选成功',
+                            status: 'success',
+                        });
                         writeSseEvent(res, 'process_step', {
                             id: 'integrate',
                             text: '信息整合完成',
@@ -337,6 +356,8 @@ export const postChat = async (req: Request, res: Response) => {
                     writeSseEvent(res, 'delta', { type: 'content', text: delta.content });
                 }
             }
+
+            progressCancelled = true;
 
             if (aborted) {
                 secondStream.controller?.abort();

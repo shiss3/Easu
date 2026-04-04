@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ReviewProcess } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
@@ -211,6 +211,8 @@ async function main() {
                     star,
                     priceDesc: `¥${basePrice}起`,
                     status: 1,
+                    // 与 API 一致：仅 PUBLISHED 酒店会在搜索/首页/详情中返回
+                    checking: ReviewProcess.PUBLISHED,
                     score,
                     reviewCount: randomInt(star * 50, star * 600),
                 }

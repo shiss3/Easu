@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Star from 'lucide-react/dist/esm/icons/star';
+import { SafeImage } from '@/components/SafeImage';
 import type { HotelVo } from '@/services/hotel-search.ts';
 
 export const HotelCard = ({ data }: { data: HotelVo }) => {
@@ -15,8 +16,8 @@ export const HotelCard = ({ data }: { data: HotelVo }) => {
             className={`flex bg-white rounded-lg overflow-hidden shadow-sm h-full ${soldOut ? 'opacity-50 grayscale' : ''}`}
         >
             <div className="w-1/3 relative">
-                <img
-                    src={data.coverImage || 'https://placehold.co/200x300'}
+                <SafeImage
+                    src={data.coverImage}
                     alt={data.name}
                     className="w-full h-full object-cover"
                     loading="lazy"

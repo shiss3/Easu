@@ -7,6 +7,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import { toast } from 'sonner';
 import type { RoomTypeVo } from '@/services/hotel-detail.ts';
 import { Button } from '@/components/ui/button.tsx';
+import { SafeImage } from '@/components/SafeImage';
 
 interface GuestInfo {
     rooms: number;
@@ -188,7 +189,7 @@ const RoomItem = ({ room, onBook }: { room: RoomTypeVo; onBook: (room: RoomTypeV
     return (
         <div className={`flex gap-3 border-b border-gray-100 pb-6 last:border-0 ${soldOut ? 'opacity-50 grayscale' : ''}`}>
             <div className="relative w-28 h-28 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
-                <img src={room.images?.[0] || 'https://placehold.co/200'} alt={room.name} className="w-full h-full object-cover" />
+                <SafeImage src={room.images?.[0]} alt={room.name} className="w-full h-full object-cover" />
             </div>
 
             <div className="flex-1 flex flex-col justify-between">
